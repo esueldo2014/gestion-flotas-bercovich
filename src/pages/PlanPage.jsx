@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useRole, can } from '../lib/RoleContext';
 import PlanForm from '../components/preventivo/PlanForm';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
+import DepositoResumen from '../components/common/DepositoResumen';
 
 const SEMAFORO = {
   rojo:     { bg:'#fee2e2', text:'#991b1b', label:'VENCIDO' },
@@ -144,7 +145,14 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); }} />
+      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+
+      <DepositoResumen
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
+        depositos={depositos}
+        selected={filterDep}
+        onSelect={(v) => { setFilterDep(v); setSelected(null); }}
+      />
 
       <div style={styles.layout}>
         <div style={styles.sidebar}>

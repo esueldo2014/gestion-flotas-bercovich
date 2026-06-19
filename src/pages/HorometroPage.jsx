@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
+import DepositoResumen from '../components/common/DepositoResumen';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -122,7 +123,14 @@ export default function HorometroPage() {
         <p style={styles.subtitle}>Registro de uso por máquina — el sistema calcula automáticamente el uso mensual</p>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); }} />
+      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+
+      <DepositoResumen
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
+        depositos={depositos}
+        selected={filterDep}
+        onSelect={(v) => { setFilterDep(v); setSelected(null); }}
+      />
 
       <div style={styles.layout}>
         {/* Sidebar */}

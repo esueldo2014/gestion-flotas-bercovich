@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useRole, can } from '../lib/RoleContext';
 import CorrectivoForm from '../components/correctivos/CorrectivoForm';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
+import DepositoResumen from '../components/common/DepositoResumen';
 
 const ESTADO_COLORS = {
   'Abierta':    { bg:'#fee2e2', text:'#991b1b' },
@@ -22,6 +23,7 @@ export default function CorrectivosPage() {
   const [editing, setEditing]         = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
   const [filterMaquina, setFilterMaquina] = useState('');
+  const [filterDeposito, setFilterDeposito] = useState('');
   const [provincia, setProvincia] = useState('T');
 
   const fetchAll = useCallback(async () => {
@@ -68,7 +70,9 @@ export default function CorrectivosPage() {
     await fetchAll();
   }
 
-  const machinesProv = machines.filter(m => esDeProvincia(m.numero_interno, provincia));
+  const machinesProv = machines
+    .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => !filterDeposito || String(m.deposito_id) === String(filterDeposito));
   const idsProv = new Set(machinesProv.map(m => m.id));
 
   const filtered = correctivos
@@ -92,7 +96,14 @@ export default function CorrectivosPage() {
         <button onClick={() => { setEditing(null); setShowForm(true); }} style={styles.btnNew}>+ Nueva OT</button>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterMaquina(''); }} />
+      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterMaquina(''); setFilterDeposito(''); }} />
+
+      <DepositoResumen
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
+        depositos={depositos}
+        selected={filterDeposito}
+        onSelect={(v) => { setFilterDeposito(v); setFilterMaquina(''); }}
+      />
 
       <div style={styles.filters}>
         <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={styles.select}>

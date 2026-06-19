@@ -4,6 +4,7 @@ import { useRole, can } from '../lib/RoleContext';
 import MachineForm from '../components/machines/MachineForm';
 import MachineList from '../components/machines/MachineList';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
+import DepositoResumen from '../components/common/DepositoResumen';
 
 export default function MachinesPage() {
   const role = useRole();
@@ -122,43 +123,8 @@ export default function MachinesPage() {
   );
 }
 
-function DepositoResumen({ machines, depositos, selected, onSelect }) {
-  const counts = {};
-  machines.forEach(m => {
-    counts[m.deposito_id] = (counts[m.deposito_id] ?? 0) + 1;
-  });
-
-  const cards = depositos
-    .filter(d => counts[d.id])
-    .map(d => ({ ...d, total: counts[d.id], operativas: machines.filter(m => m.deposito_id === d.id && m.estado === 'Operativo').length }));
-
-  if (cards.length === 0) return null;
-
-  return (
-    <div style={styles.resumenGrid}>
-      {cards.map(d => (
-        <button key={d.id} onClick={() => onSelect(String(selected) === String(d.id) ? '' : d.id)}
-          style={{ ...styles.resumenCard, ...(String(selected) === String(d.id) ? styles.resumenCardActive : {}) }}>
-          <div style={styles.resumenCode}>{d.code}</div>
-          <div style={styles.resumenTotal}>{d.total}</div>
-          <div style={styles.resumenSub}>{d.operativas} operativas</div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 const styles = {
   page: { maxWidth: 1100, margin: '0 auto', padding: '28px 20px', fontFamily: 'system-ui, sans-serif' },
-  resumenGrid: { display:'flex', gap:12, flexWrap:'wrap', marginBottom:20 },
-  resumenCard: {
-    background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, padding:'14px 18px',
-    minWidth:110, cursor:'pointer', textAlign:'left', fontFamily:'system-ui, sans-serif',
-  },
-  resumenCardActive: { borderColor:'#2563eb', background:'#eff6ff' },
-  resumenCode: { fontSize:12, fontWeight:700, color:'#64748b' },
-  resumenTotal: { fontSize:24, fontWeight:800, color:'#1e293b', marginTop:2 },
-  resumenSub: { fontSize:11, color:'#94a3b8', marginTop:2 },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 },
   title: { margin: 0, fontSize: 26, color: '#1a1a2e', fontWeight: 700 },
   subtitle: { margin: '4px 0 0', color: '#888', fontSize: 14 },
