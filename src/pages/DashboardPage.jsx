@@ -33,7 +33,11 @@ export default function DashboardPage() {
 
   if (loading || !raw) return <div style={styles.page}><p style={styles.info}>Cargando...</p></div>;
 
-  const maquinasProv = raw.maquinas.filter(m => (m.numero_interno || '').toUpperCase().startsWith(provincia + '-'));
+  const prefijos = provincia === 'S' ? ['S-', 'SC-'] : ['T-'];
+  const maquinasProv = raw.maquinas.filter(m => {
+    const num = (m.numero_interno || '').toUpperCase();
+    return prefijos.some(p => num.startsWith(p));
+  });
   const idsProv       = new Set(maquinasProv.map(m => m.id));
   const correctivosP  = raw.correctivos.filter(c => idsProv.has(c.maquina_id));
   const planP         = raw.planItems.filter(p => idsProv.has(p.maquina_id));
