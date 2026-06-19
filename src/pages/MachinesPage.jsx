@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useRole, can } from '../lib/RoleContext';
 import MachineForm from '../components/machines/MachineForm';
 import MachineList from '../components/machines/MachineList';
 
 export default function MachinesPage() {
+  const role = useRole();
+  const puedeEditar = can.editarMaquinas(role?.rol);
   const [machines, setMachines] = useState([]);
   const [depositos, setDepositos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,9 @@ export default function MachinesPage() {
           <h1 style={styles.title}>Maestro de máquinas</h1>
           <p style={styles.subtitle}>Autoelevadores y camiones — Grupo Bercovich</p>
         </div>
-        <button onClick={() => setShowForm(true)} style={styles.btnNew}>+ Nueva máquina</button>
+        {puedeEditar && (
+          <button onClick={() => setShowForm(true)} style={styles.btnNew}>+ Nueva máquina</button>
+        )}
       </div>
 
       {loading && <p style={styles.info}>Cargando...</p>}
@@ -87,8 +92,8 @@ export default function MachinesPage() {
           depositos={depositos}
           filterDeposito={filterDeposito}
           onFilterChange={setFilterDeposito}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={puedeEditar ? handleEdit : null}
+          onDelete={puedeEditar ? handleDelete : null}
         />
       )}
 

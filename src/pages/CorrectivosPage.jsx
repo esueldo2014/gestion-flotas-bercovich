@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useRole, can } from '../lib/RoleContext';
 import CorrectivoForm from '../components/correctivos/CorrectivoForm';
 
 const ESTADO_COLORS = {
@@ -9,6 +10,9 @@ const ESTADO_COLORS = {
 };
 
 export default function CorrectivosPage() {
+  const role = useRole();
+  const verCostos = can.verCostos(role?.rol);
+  const puedeGestionar = can.cerrarOT(role?.rol); // editar/cerrar/eliminar
   const [correctivos, setCorrectivos] = useState([]);
   const [machines, setMachines]       = useState([]);
   const [depositos, setDepositos]     = useState([]);
@@ -101,7 +105,7 @@ export default function CorrectivosPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Estado','Máquina','Descripción','Categoría','Reportado','Asignado','Costo','Fecha reporte','Acciones'].map(h => (
+                {['Estado','Máquina','Descripción','Categoría','Reportado','Asignado', ...(verCostos ? ['Costo'] : []), 'Fecha reporte','Acciones'].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -122,11 +126,17 @@ export default function CorrectivosPage() {
                     <td style={styles.td}>{c.categoria || '—'}</td>
                     <td style={styles.td}>{c.reportado_por || '—'}</td>
                     <td style={styles.td}>{c.asignado_a || '—'}</td>
-                    <td style={styles.td}>{c.costo_total != null ? `$${Number(c.costo_total).toLocaleString('es-AR')}` : '—'}</td>
+                    {verCostos && (
+                      <td style={styles.td}>{c.costo_total != null ? `$${Number(c.costo_total).toLocaleString('es-AR')}` : '—'}</td>
+                    )}
                     <td style={styles.td}>{new Date(c.fecha_reporte).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>
-                      <button onClick={() => { setEditing(c); setShowForm(true); }} style={styles.btnEdit}>Editar</button>
-                      <button onClick={() => handleEliminar(c)} style={styles.btnDel}>Eliminar</button>
+                      {puedeGestionar ? (
+                        <>
+                          <button onClick={() => { setEditing(c); setShowForm(true); }} style={styles.btnEdit}>Editar</button>
+                          <button onClick={() => handleEliminar(c)} style={styles.btnDel}>Eliminar</button>
+                        </>
+                      ) : '—'}
                     </td>
                   </tr>
                 );
@@ -140,6 +150,8 @@ export default function CorrectivosPage() {
         <CorrectivoForm
           machines={machines}
           initial={editing}
+          verCostos={verCostos}
+          soloLectura={editing && !puedeGestionar}
           onSave={handleSave}
           onCancel={() => { setShowForm(false); setEditing(null); }}
         />

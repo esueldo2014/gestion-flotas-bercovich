@@ -1,0 +1,17 @@
+import { createContext, useContext } from 'react';
+
+export const RoleContext = createContext(null);
+
+export function useRole() {
+  return useContext(RoleContext);
+}
+
+// helpers de permisos
+export const can = {
+  verCostos:        (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
+  editarMaquinas:   (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  editarPlan:       (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  cerrarOT:         (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
+  verDashboard:     (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  verTodosDepositos:(rol) => rol === 'Gerencia',
+};

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useRole, can } from '../lib/RoleContext';
 import PlanForm from '../components/preventivo/PlanForm';
 
 const SEMAFORO = {
@@ -40,6 +41,8 @@ function calcSemaforo(tarea, ultimaEjecucion, horoActual) {
 }
 
 export default function PlanPage() {
+  const role = useRole();
+  const puedeEditar = can.editarPlan(role?.rol);
   const [machines, setMachines]     = useState([]);
   const [depositos, setDepositos]   = useState([]);
   const [selected, setSelected]     = useState(null);
@@ -169,9 +172,11 @@ export default function PlanPage() {
                     ? <span style={styles.horo}> | Horómetro actual: {horoActual.toLocaleString('es-AR')} {unidad}</span>
                     : <span style={styles.horoWarn}> | Sin horómetro cargado</span>}
                 </div>
-                <button onClick={() => { setEditing(null); setShowForm(true); }} style={styles.btnNew}>
-                  + Nueva tarea
-                </button>
+                {puedeEditar && (
+                  <button onClick={() => { setEditing(null); setShowForm(true); }} style={styles.btnNew}>
+                    + Nueva tarea
+                  </button>
+                )}
               </div>
 
               {tareas.length === 0 ? (
@@ -222,8 +227,12 @@ export default function PlanPage() {
                           </td>
                           <td style={styles.td}>
                             <button onClick={() => handleMarcarHecho(t)} style={styles.btnDone}>✓ Hecho</button>
-                            <button onClick={() => { setEditing(t); setShowForm(true); }} style={styles.btnEdit}>Editar</button>
-                            <button onClick={() => handleEliminar(t)} style={styles.btnDel}>Eliminar</button>
+                            {puedeEditar && (
+                              <>
+                                <button onClick={() => { setEditing(t); setShowForm(true); }} style={styles.btnEdit}>Editar</button>
+                                <button onClick={() => handleEliminar(t)} style={styles.btnDel}>Eliminar</button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       );

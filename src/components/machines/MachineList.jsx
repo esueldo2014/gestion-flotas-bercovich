@@ -55,8 +55,9 @@ export default function MachineList({ machines, depositos, filterDeposito, onFil
                     </td>
                     <td style={styles.td}>{m.capacidad_patente || '—'}</td>
                     <td style={styles.td}>
-                      <button onClick={() => onEdit(m)} style={styles.btnEdit}>Editar</button>
-                      <button onClick={() => onDelete(m)} style={styles.btnDelete}>Eliminar</button>
+                      {onEdit   && <button onClick={() => onEdit(m)} style={styles.btnEdit}>Editar</button>}
+                      {onDelete && <button onClick={() => onDelete(m)} style={styles.btnDelete}>Eliminar</button>}
+                      {!onEdit && !onDelete && '—'}
                     </td>
                   </tr>
                 );

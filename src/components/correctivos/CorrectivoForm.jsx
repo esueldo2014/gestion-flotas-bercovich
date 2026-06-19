@@ -8,7 +8,7 @@ const empty = {
   repuestos:'', costo_total:'', estado:'Abierta', fecha_cierre:'',
 };
 
-export default function CorrectivoForm({ machines, initial, onSave, onCancel }) {
+export default function CorrectivoForm({ machines, initial, onSave, onCancel, verCostos = true, soloLectura = false }) {
   const [form, setForm] = useState({ maquina_id:'', ...empty, ...initial });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState(null);
@@ -34,7 +34,7 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel }) 
           {!isEdit && (
             <div style={{ ...styles.field, gridColumn:'1/-1' }}>
               <label style={styles.label}>Máquina *</label>
-              <select name="maquina_id" value={form.maquina_id} onChange={handle} style={styles.input} required>
+              <select name="maquina_id" value={form.maquina_id} onChange={handle} style={styles.input} required disabled={soloLectura}>
                 <option value="">Seleccionar...</option>
                 {machines.map(m => <option key={m.id} value={m.id}>{m.numero_interno} — {m.marca} {m.modelo}</option>)}
               </select>
@@ -43,14 +43,14 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel }) 
 
           <div style={{ ...styles.field, gridColumn:'1/-1' }}>
             <label style={styles.label}>Descripción de la falla *</label>
-            <textarea name="descripcion" value={form.descripcion} onChange={handle} required
+            <textarea name="descripcion" value={form.descripcion} onChange={handle} required disabled={soloLectura}
               rows={3} style={{ ...styles.input, resize:'vertical' }}
               placeholder="Describí qué falla o problema se detectó..." />
           </div>
 
           <div style={styles.field}>
             <label style={styles.label}>Categoría</label>
-            <select name="categoria" value={form.categoria} onChange={handle} style={styles.input}>
+            <select name="categoria" value={form.categoria} onChange={handle} style={styles.input} disabled={soloLectura}>
               <option value="">Sin categoría</option>
               {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
             </select>
@@ -58,35 +58,37 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel }) 
 
           <div style={styles.field}>
             <label style={styles.label}>Estado *</label>
-            <select name="estado" value={form.estado} onChange={handle} style={styles.input} required>
+            <select name="estado" value={form.estado} onChange={handle} style={styles.input} required disabled={soloLectura}>
               {ESTADOS.map(e => <option key={e}>{e}</option>)}
             </select>
           </div>
 
           <div style={styles.field}>
             <label style={styles.label}>Reportado por</label>
-            <input name="reportado_por" value={form.reportado_por} onChange={handle} style={styles.input} placeholder="Nombre del operario" />
+            <input name="reportado_por" value={form.reportado_por} onChange={handle} style={styles.input} placeholder="Nombre del operario" disabled={soloLectura} />
           </div>
 
           <div style={styles.field}>
             <label style={styles.label}>Asignado a</label>
-            <input name="asignado_a" value={form.asignado_a} onChange={handle} style={styles.input} placeholder="Mecánico o taller" />
+            <input name="asignado_a" value={form.asignado_a} onChange={handle} style={styles.input} placeholder="Mecánico o taller" disabled={soloLectura} />
           </div>
 
           <div style={{ ...styles.field, gridColumn:'1/-1' }}>
             <label style={styles.label}>Repuestos utilizados</label>
-            <input name="repuestos" value={form.repuestos} onChange={handle} style={styles.input} placeholder="Ej: Filtro de aceite x1, correa x2..." />
+            <input name="repuestos" value={form.repuestos} onChange={handle} style={styles.input} placeholder="Ej: Filtro de aceite x1, correa x2..." disabled={soloLectura} />
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Costo total ($)</label>
-            <input name="costo_total" type="number" min="0" step="0.01" value={form.costo_total} onChange={handle} style={styles.input} placeholder="0.00" />
-          </div>
+          {verCostos && (
+            <div style={styles.field}>
+              <label style={styles.label}>Costo total ($)</label>
+              <input name="costo_total" type="number" min="0" step="0.01" value={form.costo_total} onChange={handle} style={styles.input} placeholder="0.00" disabled={soloLectura} />
+            </div>
+          )}
 
           {(form.estado === 'Cerrada') && (
             <div style={styles.field}>
               <label style={styles.label}>Fecha de cierre</label>
-              <input name="fecha_cierre" type="datetime-local" value={form.fecha_cierre} onChange={handle} style={styles.input} />
+              <input name="fecha_cierre" type="datetime-local" value={form.fecha_cierre} onChange={handle} style={styles.input} disabled={soloLectura} />
             </div>
           )}
         </div>
@@ -94,10 +96,12 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel }) 
         {error && <p style={styles.error}>{error}</p>}
 
         <div style={styles.actions}>
-          <button type="button" onClick={onCancel} style={styles.btnSecondary}>Cancelar</button>
-          <button type="submit" disabled={saving} style={styles.btnPrimary}>
-            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear OT'}
-          </button>
+          <button type="button" onClick={onCancel} style={styles.btnSecondary}>{soloLectura ? 'Cerrar' : 'Cancelar'}</button>
+          {!soloLectura && (
+            <button type="submit" disabled={saving} style={styles.btnPrimary}>
+              {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear OT'}
+            </button>
+          )}
         </div>
       </form>
     </div>
