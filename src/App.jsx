@@ -8,6 +8,7 @@ import PlanPage         from './pages/PlanPage';
 import CorrectivosPage  from './pages/CorrectivosPage';
 import DashboardPage    from './pages/DashboardPage';
 import HomePage          from './pages/HomePage';
+import InformePage       from './pages/InformePage';
 
 const NAV = [
   { id:'inicio',       label:'Inicio',          show: () => true },
@@ -16,6 +17,7 @@ const NAV = [
   { id:'horometro',    label:'Horómetro / Km',  show: () => true },
   { id:'preventivo',   label:'Plan preventivo', show: () => true },
   { id:'correctivos',  label:'Correctivos',     show: () => true },
+  { id:'informe',      label:'Informe mensual', show: (rol) => can.verDashboard(rol) },
 ];
 
 export default function App() {
@@ -79,7 +81,7 @@ export default function App() {
   return (
     <RoleContext.Provider value={role}>
       <div>
-        <nav style={styles.nav}>
+        <nav style={styles.nav} className="no-print">
           <button onClick={() => setPage('inicio')} style={styles.brand}>
             <img src="/logo-bercovich.jpg" alt="Grupo Bercovich" style={styles.logo} />
           </button>
@@ -104,6 +106,7 @@ export default function App() {
         {currentPage === 'horometro'   && <HorometroPage />}
         {currentPage === 'preventivo'  && <PlanPage />}
         {currentPage === 'correctivos' && <CorrectivosPage />}
+        {currentPage === 'informe'     && <InformePage />}
       </div>
     </RoleContext.Provider>
   );
