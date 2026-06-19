@@ -19,7 +19,7 @@ export default function LoginPage({ onLogin }) {
   return (
     <div style={styles.bg}>
       <form onSubmit={handleSubmit} style={styles.card}>
-        <div style={styles.logo}>🏭</div>
+        <img src="/logo-bercovich.jpg" alt="Grupo Bercovich" style={styles.logo} />
         <h1 style={styles.title}>Gestión de Flotas</h1>
         <p style={styles.subtitle}>Grupo Bercovich / Tu Mundo Distribución</p>
 
@@ -47,7 +47,7 @@ export default function LoginPage({ onLogin }) {
 const styles = {
   bg: { minHeight:'100vh', background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center' },
   card: { background:'#fff', borderRadius:12, padding:'40px 36px', width:'100%', maxWidth:380, boxShadow:'0 8px 32px rgba(0,0,0,0.12)' },
-  logo: { fontSize:40, textAlign:'center', marginBottom:8 },
+  logo: { display:'block', margin:'0 auto 16px', maxHeight:60, maxWidth:'100%' },
   title: { margin:'0 0 4px', fontSize:22, fontWeight:700, color:'#1a1a2e', textAlign:'center', fontFamily:'system-ui, sans-serif' },
   subtitle: { margin:'0 0 28px', fontSize:13, color:'#94a3b8', textAlign:'center', fontFamily:'system-ui, sans-serif' },
   field: { display:'flex', flexDirection:'column', gap:4, marginBottom:16 },
