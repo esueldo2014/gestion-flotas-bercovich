@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -12,6 +13,7 @@ export default function HorometroPage() {
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState(null);
   const [filterDep, setFilterDep] = useState('');
+  const [provincia, setProvincia] = useState('T');
 
   // form nueva lectura
   const [valor, setValor]         = useState('');
@@ -109,7 +111,9 @@ export default function HorometroPage() {
   const unidad = selected?.tipo === 'Autoelevador' ? 'hs' : 'km';
   const ultimaLectura = lecturas.length > 0 ? Number(lecturas[0].valor) : null;
   const usoMensual = selected ? calcularUsoMensual(lecturas, selected.hora_inicial) : [];
-  const filtered = filterDep ? machines.filter(m => String(m.deposito_id) === String(filterDep)) : machines;
+  const filtered = machines
+    .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => !filterDep || String(m.deposito_id) === String(filterDep));
 
   return (
     <div style={styles.page}>
@@ -117,6 +121,8 @@ export default function HorometroPage() {
         <h1 style={styles.title}>Horómetro / Kilometraje</h1>
         <p style={styles.subtitle}>Registro de uso por máquina — el sistema calcula automáticamente el uso mensual</p>
       </div>
+
+      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); }} />
 
       <div style={styles.layout}>
         {/* Sidebar */}

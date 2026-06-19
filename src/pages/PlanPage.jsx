@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRole, can } from '../lib/RoleContext';
 import PlanForm from '../components/preventivo/PlanForm';
+import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 
 const SEMAFORO = {
   rojo:     { bg:'#fee2e2', text:'#991b1b', label:'VENCIDO' },
@@ -53,6 +54,7 @@ export default function PlanPage() {
   const [showForm, setShowForm]     = useState(false);
   const [editing, setEditing]       = useState(null);
   const [filterDep, setFilterDep]   = useState('');
+  const [provincia, setProvincia]   = useState('T');
 
   const fetchMachines = useCallback(async () => {
     setLoading(true);
@@ -128,7 +130,9 @@ export default function PlanPage() {
     return null;
   }
 
-  const filtered = filterDep ? machines.filter(m => String(m.deposito_id) === String(filterDep)) : machines;
+  const filtered = machines
+    .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => !filterDep || String(m.deposito_id) === String(filterDep));
   const unidad = selected?.tipo === 'Autoelevador' ? 'hs' : 'km';
 
   return (
@@ -139,6 +143,8 @@ export default function PlanPage() {
           <p style={styles.subtitle}>Semáforo de vencimientos por máquina</p>
         </div>
       </div>
+
+      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); }} />
 
       <div style={styles.layout}>
         <div style={styles.sidebar}>

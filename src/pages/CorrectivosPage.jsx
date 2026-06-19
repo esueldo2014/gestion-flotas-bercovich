@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRole, can } from '../lib/RoleContext';
 import CorrectivoForm from '../components/correctivos/CorrectivoForm';
+import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 
 const ESTADO_COLORS = {
   'Abierta':    { bg:'#fee2e2', text:'#991b1b' },
@@ -21,6 +22,7 @@ export default function CorrectivosPage() {
   const [editing, setEditing]         = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
   const [filterMaquina, setFilterMaquina] = useState('');
+  const [provincia, setProvincia] = useState('T');
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -66,7 +68,11 @@ export default function CorrectivosPage() {
     await fetchAll();
   }
 
+  const machinesProv = machines.filter(m => esDeProvincia(m.numero_interno, provincia));
+  const idsProv = new Set(machinesProv.map(m => m.id));
+
   const filtered = correctivos
+    .filter(c => idsProv.has(c.maquina_id))
     .filter(c => !filterEstado  || c.estado === filterEstado)
     .filter(c => !filterMaquina || c.maquina_id === filterMaquina);
 
@@ -86,6 +92,8 @@ export default function CorrectivosPage() {
         <button onClick={() => { setEditing(null); setShowForm(true); }} style={styles.btnNew}>+ Nueva OT</button>
       </div>
 
+      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterMaquina(''); }} />
+
       <div style={styles.filters}>
         <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={styles.select}>
           <option value="">Todos los estados</option>
@@ -93,7 +101,7 @@ export default function CorrectivosPage() {
         </select>
         <select value={filterMaquina} onChange={e => setFilterMaquina(e.target.value)} style={styles.select}>
           <option value="">Todas las máquinas</option>
-          {machines.map(m => <option key={m.id} value={m.id}>{m.numero_interno} — {m.marca} {m.modelo}</option>)}
+          {machinesProv.map(m => <option key={m.id} value={m.id}>{m.numero_interno} — {m.marca} {m.modelo}</option>)}
         </select>
         <span style={styles.count}>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
       </div>
@@ -148,7 +156,7 @@ export default function CorrectivosPage() {
 
       {showForm && (
         <CorrectivoForm
-          machines={machines}
+          machines={machinesProv}
           initial={editing}
           verCostos={verCostos}
           soloLectura={editing && !puedeGestionar}

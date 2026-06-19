@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useRole, can } from '../lib/RoleContext';
 import MachineForm from '../components/machines/MachineForm';
 import MachineList from '../components/machines/MachineList';
+import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 
 export default function MachinesPage() {
   const role = useRole();
@@ -14,6 +15,7 @@ export default function MachinesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filterDeposito, setFilterDeposito] = useState('');
+  const [provincia, setProvincia] = useState('T');
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -83,12 +85,14 @@ export default function MachinesPage() {
         )}
       </div>
 
+      <ProvinciaTabs value={provincia} onChange={setProvincia} />
+
       {loading && <p style={styles.info}>Cargando...</p>}
       {error && <p style={styles.errorMsg}>Error: {error}</p>}
 
       {!loading && !error && (
         <MachineList
-          machines={machines}
+          machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
           depositos={depositos}
           filterDeposito={filterDeposito}
           onFilterChange={setFilterDeposito}
