@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AdjuntosPanel from './AdjuntosPanel';
 
 const CATEGORIAS = ['Motor','Hidráulico','Eléctrico','Neumáticos','Frenos','Transmisión','Estructura','Otro'];
 const ESTADOS    = ['Abierta','En proceso','Cerrada'];
@@ -94,6 +95,8 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel, ve
         </div>
 
         {error && <p style={styles.error}>{error}</p>}
+
+        {isEdit && <AdjuntosPanel correctivoId={initial.id} />}
 
         <div style={styles.actions}>
           <button type="button" onClick={onCancel} style={styles.btnSecondary}>{soloLectura ? 'Cerrar' : 'Cancelar'}</button>
