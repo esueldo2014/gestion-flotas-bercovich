@@ -7,8 +7,10 @@ import HorometroPage    from './pages/HorometroPage';
 import PlanPage         from './pages/PlanPage';
 import CorrectivosPage  from './pages/CorrectivosPage';
 import DashboardPage    from './pages/DashboardPage';
+import HomePage          from './pages/HomePage';
 
 const NAV = [
+  { id:'inicio',       label:'Inicio',          show: () => true },
   { id:'dashboard',    label:'Dashboard',       show: (rol) => can.verDashboard(rol) },
   { id:'maquinas',     label:'Máquinas',        show: () => true },
   { id:'horometro',    label:'Horómetro / Km',  show: () => true },
@@ -19,7 +21,7 @@ const NAV = [
 export default function App() {
   const [user, setUser]         = useState(null);
   const [role, setRole]         = useState(null);
-  const [page, setPage]         = useState('horometro');
+  const [page, setPage]         = useState('inicio');
   const [checking, setChecking] = useState(true);
 
   const fetchRole = useCallback(async (currentUser) => {
@@ -54,7 +56,7 @@ export default function App() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    setPage('horometro');
+    setPage('inicio');
   }
 
   if (checking) return <div style={styles.loading}>Cargando...</div>;
@@ -78,7 +80,7 @@ export default function App() {
     <RoleContext.Provider value={role}>
       <div>
         <nav style={styles.nav}>
-          <span style={styles.brand}>🏭 Grupo Bercovich</span>
+          <button onClick={() => setPage('inicio')} style={styles.brand}>🏭 Grupo Bercovich</button>
           <div style={styles.navLinks}>
             {visibleNav.map(n => (
               <button key={n.id} onClick={() => setPage(n.id)}
@@ -94,6 +96,7 @@ export default function App() {
           </div>
         </nav>
 
+        {currentPage === 'inicio'      && <HomePage nav={visibleNav.filter(n => n.id !== 'inicio')} onNavigate={setPage} />}
         {currentPage === 'dashboard'   && <DashboardPage />}
         {currentPage === 'maquinas'    && <MachinesPage />}
         {currentPage === 'horometro'   && <HorometroPage />}
@@ -109,7 +112,7 @@ const styles = {
   noRole: { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', fontFamily:'system-ui, sans-serif', gap:10, color:'#475569' },
   noRoleSub: { fontSize:13, color:'#94a3b8', marginBottom:10 },
   nav: { display:'flex', alignItems:'center', gap:24, padding:'12px 24px', background:'#1e293b', position:'sticky', top:0, zIndex:50, flexWrap:'wrap' },
-  brand: { color:'#f1f5f9', fontWeight:700, fontSize:15, fontFamily:'system-ui, sans-serif', whiteSpace:'nowrap' },
+  brand: { color:'#f1f5f9', fontWeight:700, fontSize:15, fontFamily:'system-ui, sans-serif', whiteSpace:'nowrap', background:'transparent', border:'none', cursor:'pointer', padding:0 },
   navLinks: { display:'flex', gap:2, flex:1 },
   navBtn: { background:'transparent', border:'none', color:'#94a3b8', padding:'7px 14px', borderRadius:6, cursor:'pointer', fontSize:13, fontFamily:'system-ui, sans-serif', fontWeight:500 },
   navBtnActive: { background:'#334155', color:'#f1f5f9' },
