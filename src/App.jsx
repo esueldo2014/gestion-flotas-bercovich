@@ -10,12 +10,14 @@ import DashboardPage    from './pages/DashboardPage';
 import HomePage          from './pages/HomePage';
 import InformePage       from './pages/InformePage';
 import EdilicioPage      from './pages/EdilicioPage';
+import CombustiblePage   from './pages/CombustiblePage';
 
 const NAV = [
   { id:'inicio',       label:'Inicio',          show: () => true },
   { id:'dashboard',    label:'Dashboard',       show: (rol) => can.verDashboard(rol) },
   { id:'maquinas',     label:'Máquinas',        show: () => true },
   { id:'horometro',    label:'Horómetro / Km',  show: () => true },
+  { id:'combustible',  label:'Combustible',     show: () => true },
   { id:'preventivo',   label:'Plan preventivo', show: () => true },
   { id:'correctivos',  label:'Correctivos',     show: () => true },
   { id:'edilicio',     label:'Edilicio',        show: () => true },
@@ -106,6 +108,7 @@ export default function App() {
         {currentPage === 'dashboard'   && <DashboardPage />}
         {currentPage === 'maquinas'    && <MachinesPage />}
         {currentPage === 'horometro'   && <HorometroPage />}
+        {currentPage === 'combustible' && <CombustiblePage />}
         {currentPage === 'preventivo'  && <PlanPage />}
         {currentPage === 'correctivos' && <CorrectivosPage />}
         {currentPage === 'edilicio'    && <EdilicioPage />}
