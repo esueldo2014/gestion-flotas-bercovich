@@ -4,7 +4,8 @@
       "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\User\\\\Documents\\\\Proyecto App\\\\Gestion de Flotas\\\\src\\\\lib\")",
       "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\User\\\\Documents\\\\Proyecto App\\\\Gestion de Flotas\\\\src\\\\components\\\\machines\")",
       "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\User\\\\Documents\\\\Proyecto App\\\\Gestion de Flotas\\\\src\\\\pages\")",
-      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); node --version)"
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); node --version)",
+      "Bash(cp \"/c/Users/User/Downloads/Autoelevador.jpg\" \"/c/Users/User/Documents/Proyecto App/Gestion de Flotas/public/icono-maquinas.jpg\")"
     ]
   }
 }

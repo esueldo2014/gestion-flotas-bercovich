@@ -9,7 +9,9 @@ export default function HomePage({ nav, onNavigate }) {
       <div style={styles.grid}>
         {nav.map(n => (
           <button key={n.id} onClick={() => onNavigate(n.id)} style={styles.card}>
-            <span style={styles.icon}>{ICONS[n.id] ?? '📋'}</span>
+            {n.id === 'maquinas'
+              ? <img src="/icono-maquinas.jpg" alt="Máquinas" style={styles.iconImg} />
+              : <span style={styles.icon}>{ICONS[n.id] ?? '📋'}</span>}
             <span style={styles.label}>{n.label}</span>
           </button>
         ))}
@@ -19,11 +21,13 @@ export default function HomePage({ nav, onNavigate }) {
 }
 
 const ICONS = {
-  dashboard:   '📊',
-  maquinas:    '🏗️🚛',
-  horometro:   '⏱️',
-  preventivo:  '🛠️',
-  correctivos: '🔧',
+  dashboard:    '📊',
+  horometro:    '⏱️',
+  combustible:  '⛽',
+  preventivo:   '🛠️',
+  correctivos:  '🔧',
+  edilicio:     '🏢',
+  informe:      '📄',
 };
 
 const styles = {
@@ -39,5 +43,6 @@ const styles = {
     transition:'transform 0.1s, box-shadow 0.1s', boxShadow:'0 1px 3px rgba(0,0,0,0.05)',
   },
   icon: { fontSize:40 },
+  iconImg: { height:44, objectFit:'contain' },
   label: { fontSize:15, fontWeight:700, color:'#1e293b', textAlign:'center' },
 };
