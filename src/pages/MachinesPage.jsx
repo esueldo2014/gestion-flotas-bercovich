@@ -75,8 +75,8 @@ export default function MachinesPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div style={styles.page} className="page-padding">
+      <div style={styles.header} className="header-flex">
         <div>
           <h1 style={styles.title}>Maestro de máquinas</h1>
           <p style={styles.subtitle}>Autoelevadores y camiones — Grupo Bercovich</p>

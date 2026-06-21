@@ -1,0 +1,100 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; overflow-x: hidden; }
+img { max-width: 100%; }
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Layouts de dos columnas (sidebar + main) usados en Horometro, Plan, Combustible */
+.layout-sidebar {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Grillas de dos columnas usadas en formularios y dashboards */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+}
+
+.page-padding {
+  padding: 28px 20px;
+}
+
+@media (max-width: 880px) {
+  .layout-sidebar {
+    grid-template-columns: 1fr !important;
+  }
+  .layout-sidebar > .sidebar-block {
+    position: static !important;
+    max-height: 260px !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .page-padding {
+    padding: 18px 12px !important;
+  }
+  h1 {
+    font-size: 22px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav-links-wrap {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  nav {
+    gap: 12px !important;
+    padding: 10px 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 10px;
+    padding: 20px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .header-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .header-flex > button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .controls-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+  }
+  .controls-flex select,
+  .controls-flex button {
+    width: 100%;
+  }
+}

@@ -117,7 +117,7 @@ export default function HorometroPage() {
     .filter(m => !filterDep || String(m.deposito_id) === String(filterDep));
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>Horómetro / Kilometraje</h1>
         <p style={styles.subtitle}>Registro de uso por máquina — el sistema calcula automáticamente el uso mensual</p>
@@ -132,9 +132,9 @@ export default function HorometroPage() {
         onSelect={(v) => { setFilterDep(v); setSelected(null); }}
       />
 
-      <div style={styles.layout}>
+      <div style={styles.layout} className="layout-sidebar">
         {/* Sidebar */}
-        <div style={styles.sidebar}>
+        <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
             <option value="">Todos los depósitos</option>
             {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
@@ -188,6 +188,7 @@ export default function HorometroPage() {
               {lecturas.length > 0 && (
                 <div style={styles.section}>
                   <h3 style={styles.sectionTitle}>Historial de lecturas</h3>
+                  <div className="table-scroll">
                   <table style={styles.table}>
                     <thead><tr>
                       <th style={styles.th}>Fecha y hora</th>
@@ -230,6 +231,7 @@ export default function HorometroPage() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
 
@@ -238,6 +240,7 @@ export default function HorometroPage() {
                 <div style={styles.section}>
                   <h3 style={styles.sectionTitle}>Uso mensual calculado</h3>
                   <p style={styles.hint}>Calculado automáticamente en base a la última lectura de cada mes.</p>
+                  <div className="table-scroll">
                   <table style={styles.table}>
                     <thead><tr>
                       <th style={styles.th}>Mes / Año</th>
@@ -258,6 +261,7 @@ export default function HorometroPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </>

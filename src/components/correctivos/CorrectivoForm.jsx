@@ -28,10 +28,10 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel, ve
 
   return (
     <div style={styles.overlay}>
-      <form onSubmit={submit} style={styles.card}>
+      <form onSubmit={submit} style={styles.card} className="modal-card">
         <h3 style={styles.title}>{isEdit ? 'Editar orden de trabajo' : 'Nueva orden de trabajo'}</h3>
 
-        <div style={styles.grid}>
+        <div style={styles.grid} className="grid-2">
           {!isEdit && (
             <div style={{ ...styles.field, gridColumn:'1/-1' }}>
               <label style={styles.label}>Máquina *</label>

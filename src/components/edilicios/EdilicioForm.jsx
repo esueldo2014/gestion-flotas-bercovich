@@ -32,10 +32,10 @@ export default function EdilicioForm({ depositos, initial, permisos, onSave, onC
 
   return (
     <div style={styles.overlay}>
-      <form onSubmit={submit} style={styles.card}>
+      <form onSubmit={submit} style={styles.card} className="modal-card">
         <h3 style={styles.title}>{isEdit ? 'Editar solicitud' : 'Nueva necesidad detectada'}</h3>
 
-        <div style={styles.grid}>
+        <div style={styles.grid} className="grid-2">
           <div style={styles.field}>
             <label style={styles.label}>Provincia *</label>
             <select name="provincia" value={form.provincia} onChange={handle} style={styles.input} required disabled={soloLectura}>

@@ -83,8 +83,8 @@ export default function CorrectivosPage() {
   const pendientes = correctivos.filter(c => c.estado !== 'Cerrada').length;
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div style={styles.page} className="page-padding">
+      <div style={styles.header} className="header-flex">
         <div>
           <h1 style={styles.title}>Correctivos — Órdenes de trabajo</h1>
           <p style={styles.subtitle}>

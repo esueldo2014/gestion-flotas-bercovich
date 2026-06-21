@@ -1,6 +1,6 @@
 export default function HomePage({ nav, onNavigate }) {
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>¿Qué querés hacer?</h1>
         <p style={styles.subtitle}>Tocá una sección para entrar</p>

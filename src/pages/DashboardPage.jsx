@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const stats = calcularStats(maquinasProv, correctivosP, planP, ejecutadosP, lecturasP);
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>Dashboard</h1>
         <p style={styles.subtitle}>Resumen general de la flota</p>
@@ -187,9 +187,10 @@ function DashboardContent({ stats }) {
         </div>
       )}
 
-      <div style={styles.bottomGrid}>
+      <div style={styles.bottomGrid} className="grid-2">
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>Disponibilidad por depósito</h2>
+          <div className="table-scroll">
           <table style={styles.table}>
             <thead><tr>
               <th style={styles.th}>Depósito</th>
@@ -216,6 +217,7 @@ function DashboardContent({ stats }) {
               })}
             </tbody>
           </table>
+          </div>
         </div>
 
         <div style={styles.section}>
@@ -223,6 +225,7 @@ function DashboardContent({ stats }) {
           {stats.ranking.length === 0 ? (
             <p style={styles.empty}>Sin datos de correctivos aún.</p>
           ) : (
+            <div className="table-scroll">
             <table style={styles.table}>
               <thead><tr>
                 <th style={styles.th}>Puesto</th>
@@ -241,6 +244,7 @@ function DashboardContent({ stats }) {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

@@ -48,13 +48,13 @@ export default function InformePage() {
   const totalMaquinas = informesPorProvincia.reduce((s, i) => s + i.total, 0);
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header} className="no-print">
+    <div style={styles.page} className="page-padding">
+      <div style={styles.header} className="no-print header-flex">
         <div>
           <h1 style={styles.title}>Informe mensual de gestión</h1>
           <p style={styles.subtitle}>Entregable para Gerencia</p>
         </div>
-        <div style={styles.controls}>
+        <div style={styles.controls} className="controls-flex">
           <select value={mes} onChange={e => setMes(Number(e.target.value))} style={styles.select}>
             {MESES.map((m,i) => <option key={i+1} value={i+1}>{m}</option>)}
           </select>
@@ -102,7 +102,7 @@ export default function InformePage() {
           {Object.keys(info.horasPorDep).length > 0 && (
             <div style={styles.subsection}>
               <h3 style={styles.subTitle}>Horas de uso por depósito</h3>
-              <table style={styles.table}>
+              <div className="table-scroll"><table style={styles.table}>
                 <thead><tr><th style={styles.th}>Depósito</th><th style={styles.th}>Horas usadas</th></tr></thead>
                 <tbody>
                   {Object.entries(info.horasPorDep).sort((a,b)=>b[1]-a[1]).map(([dep, hs]) => (
@@ -112,7 +112,7 @@ export default function InformePage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
 
@@ -121,7 +121,7 @@ export default function InformePage() {
             {info.ots.length === 0 ? (
               <p style={styles.empty}>Sin órdenes de trabajo este mes.</p>
             ) : (
-              <table style={styles.table}>
+              <div className="table-scroll"><table style={styles.table}>
                 <thead><tr>
                   <th style={styles.th}>Máquina</th><th style={styles.th}>Descripción</th>
                   <th style={styles.th}>Estado</th><th style={styles.th}>Costo</th>
@@ -136,14 +136,14 @@ export default function InformePage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
 
           {info.ranking.length > 0 && (
             <div style={styles.subsection}>
               <h3 style={styles.subTitle}>Máquinas con más correctivos (histórico)</h3>
-              <table style={styles.table}>
+              <div className="table-scroll"><table style={styles.table}>
                 <thead><tr><th style={styles.th}>Máquina</th><th style={styles.th}>N° de OTs</th></tr></thead>
                 <tbody>
                   {info.ranking.map(r => (
@@ -153,7 +153,7 @@ export default function InformePage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </div>

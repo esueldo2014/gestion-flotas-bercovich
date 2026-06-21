@@ -137,7 +137,7 @@ export default function PlanPage() {
   const unidad = selected?.tipo === 'Autoelevador' ? 'hs' : 'km';
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Plan de mantenimiento preventivo</h1>
@@ -154,8 +154,8 @@ export default function PlanPage() {
         onSelect={(v) => { setFilterDep(v); setSelected(null); }}
       />
 
-      <div style={styles.layout}>
-        <div style={styles.sidebar}>
+      <div style={styles.layout} className="layout-sidebar">
+        <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
             <option value="">Todos los depósitos</option>
             {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
@@ -196,6 +196,7 @@ export default function PlanPage() {
               {tareas.length === 0 ? (
                 <div style={styles.placeholder}><p>Sin tareas preventivas definidas. Hacé clic en "+ Nueva tarea".</p></div>
               ) : (
+                <div className="table-scroll">
                 <table style={styles.table}>
                   <thead>
                     <tr>
@@ -253,6 +254,7 @@ export default function PlanPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </>
           )}

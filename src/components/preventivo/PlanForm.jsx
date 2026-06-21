@@ -24,7 +24,7 @@ export default function PlanForm({ initial, onSave, onCancel }) {
 
   return (
     <div style={styles.overlay}>
-      <form onSubmit={submit} style={styles.card}>
+      <form onSubmit={submit} style={styles.card} className="modal-card">
         <h3 style={styles.title}>{initial ? 'Editar tarea' : 'Nueva tarea preventiva'}</h3>
 
         <div style={styles.field}>

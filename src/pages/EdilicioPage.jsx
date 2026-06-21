@@ -95,8 +95,8 @@ export default function EdilicioPage() {
   const pendientesAprobacion = solicitudes.filter(s => s.provincia === provincia && s.estado === 'Pendiente de aprobación').length;
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div style={styles.page} className="page-padding">
+      <div style={styles.header} className="header-flex">
         <div>
           <h1 style={styles.title}>Mantenimiento edilicio</h1>
           <p style={styles.subtitle}>

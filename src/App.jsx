@@ -89,7 +89,7 @@ export default function App() {
           <button onClick={() => setPage('inicio')} style={styles.brand}>
             <img src="/logo-bercovich.jpg" alt="Grupo Bercovich" style={styles.logo} />
           </button>
-          <div style={styles.navLinks}>
+          <div style={styles.navLinks} className="nav-links-wrap">
             {visibleNav.map(n => (
               <button key={n.id} onClick={() => setPage(n.id)}
                 style={{ ...styles.navBtn, ...(currentPage === n.id ? styles.navBtnActive : {}) }}>
@@ -99,7 +99,7 @@ export default function App() {
           </div>
           <div style={styles.userArea}>
             <span style={styles.userRol}>{role.rol}</span>
-            <span style={styles.userEmail}>{user.email}</span>
+            <span style={styles.userEmail} className="hide-mobile">{user.email}</span>
             <button onClick={handleLogout} style={styles.logoutBtn}>Salir</button>
           </div>
         </nav>

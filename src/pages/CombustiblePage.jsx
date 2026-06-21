@@ -90,7 +90,7 @@ export default function CombustiblePage() {
     .reduce((s, c) => s + Number(c.litros), 0);
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>Combustible</h1>
         <p style={styles.subtitle}>Registro de cargas de gasoil por máquina</p>
@@ -105,8 +105,8 @@ export default function CombustiblePage() {
         onSelect={(v) => { setFilterDep(v); setSelected(null); }}
       />
 
-      <div style={styles.layout}>
-        <div style={styles.sidebar}>
+      <div style={styles.layout} className="layout-sidebar">
+        <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
             <option value="">Todos los depósitos</option>
             {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
@@ -170,6 +170,7 @@ export default function CombustiblePage() {
                   <p style={styles.hint}>
                     Rendimiento calculado automáticamente entre cargas con {unidad === 'hs' ? 'horómetro' : 'odómetro'} registrado.
                   </p>
+                  <div className="table-scroll">
                   <table style={styles.table}>
                     <thead><tr>
                       <th style={styles.th}>Fecha</th>
@@ -196,6 +197,7 @@ export default function CombustiblePage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </>

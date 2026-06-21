@@ -49,10 +49,10 @@ export default function MachineForm({ depositos, initial, onSave, onCancel }) {
 
   return (
     <div style={styles.overlay}>
-      <form onSubmit={handleSubmit} style={styles.card}>
+      <form onSubmit={handleSubmit} style={styles.card} className="modal-card">
         <h2 style={styles.title}>{isEdit ? 'Editar máquina' : 'Alta de máquina'}</h2>
 
-        <div style={styles.grid}>
+        <div style={styles.grid} className="grid-2">
           <Field label="N° interno *" name="numero_interno" value={form.numero_interno}
             onChange={handleChange} required placeholder="AE-014 / CAM-07" />
 
