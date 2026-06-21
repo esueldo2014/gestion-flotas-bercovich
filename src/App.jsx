@@ -9,6 +9,7 @@ import CorrectivosPage  from './pages/CorrectivosPage';
 import DashboardPage    from './pages/DashboardPage';
 import HomePage          from './pages/HomePage';
 import InformePage       from './pages/InformePage';
+import EdilicioPage      from './pages/EdilicioPage';
 
 const NAV = [
   { id:'inicio',       label:'Inicio',          show: () => true },
@@ -17,6 +18,7 @@ const NAV = [
   { id:'horometro',    label:'Horómetro / Km',  show: () => true },
   { id:'preventivo',   label:'Plan preventivo', show: () => true },
   { id:'correctivos',  label:'Correctivos',     show: () => true },
+  { id:'edilicio',     label:'Edilicio',        show: () => true },
   { id:'informe',      label:'Informe mensual', show: (rol) => can.verDashboard(rol) },
 ];
 
@@ -106,6 +108,7 @@ export default function App() {
         {currentPage === 'horometro'   && <HorometroPage />}
         {currentPage === 'preventivo'  && <PlanPage />}
         {currentPage === 'correctivos' && <CorrectivosPage />}
+        {currentPage === 'edilicio'    && <EdilicioPage />}
         {currentPage === 'informe'     && <InformePage />}
       </div>
     </RoleContext.Provider>

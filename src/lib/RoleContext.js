@@ -14,4 +14,9 @@ export const can = {
   cerrarOT:         (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
   verDashboard:     (rol) => ['Supervisor', 'Gerencia'].includes(rol),
   verTodosDepositos:(rol) => rol === 'Gerencia',
+
+  // mantenimiento edilicio
+  gestionarCotizaciones: (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  aprobarEdilicio:       (rol) => rol === 'Gerencia',
+  ejecutarCerrarEdilicio:(rol) => ['Supervisor', 'Gerencia'].includes(rol),
 };
