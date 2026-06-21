@@ -20,7 +20,7 @@ export default function HomePage({ nav, onNavigate }) {
 
 const ICONS = {
   dashboard:   '📊',
-  maquinas:    '🚜',
+  maquinas:    '🏗️🚛',
   horometro:   '⏱️',
   preventivo:  '🛠️',
   correctivos: '🔧',
