@@ -93,7 +93,17 @@ export default function CotizacionesPanel({ solicitudId, puedeGestionar }) {
             placeholder="Proveedor" style={styles.input} />
           <input type="number" min="0" step="0.01" value={monto} onChange={e => setMonto(e.target.value)}
             placeholder="Monto $" style={{ ...styles.input, width:120 }} />
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setFile(e.target.files[0])} style={styles.fileInput} />
+          <label style={styles.fileBtn}>
+            📷 Sacar foto
+            <input type="file" accept="image/*" capture="environment"
+              onChange={e => setFile(e.target.files[0])} style={styles.fileInputHidden} />
+          </label>
+          <label style={styles.fileBtn}>
+            📎 Elegir archivo
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+              onChange={e => setFile(e.target.files[0])} style={styles.fileInputHidden} />
+          </label>
+          {file && <span style={styles.fileName}>{file.name}</span>}
           <button type="submit" disabled={saving} style={styles.btn}>{saving ? 'Agregando...' : 'Agregar'}</button>
         </form>
       )}
@@ -118,6 +128,9 @@ const styles = {
   form: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
   input: { padding: '7px 10px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13, flex: 1, minWidth: 140 },
   fileInput: { fontSize: 12, minWidth: 140 },
+  fileBtn: { display:'inline-flex', alignItems:'center', gap:6, background:'#f1f5f9', color:'#334155', border:'1px solid #cbd5e1', borderRadius:6, padding:'7px 12px', fontSize:13, fontWeight:600, cursor:'pointer' },
+  fileInputHidden: { display:'none' },
+  fileName: { fontSize:12, color:'#64748b', fontStyle:'italic' },
   btn: { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   error: { color: '#c0392b', fontSize: 12, marginTop: 8 },
 };

@@ -68,8 +68,17 @@ export default function AdjuntosPanel({ correctivoId }) {
         <select value={tipo} onChange={e => setTipo(e.target.value)} style={styles.select}>
           {TIPOS.map(t => <option key={t}>{t}</option>)}
         </select>
-        <input type="file" accept=".pdf,.jpg,.jpeg,.png"
-          onChange={e => setFile(e.target.files[0])} style={styles.fileInput} />
+        <label style={styles.fileBtn}>
+          📷 Sacar foto
+          <input type="file" accept="image/*" capture="environment"
+            onChange={e => setFile(e.target.files[0])} style={styles.fileInputHidden} />
+        </label>
+        <label style={styles.fileBtn}>
+          📎 Elegir archivo
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+            onChange={e => setFile(e.target.files[0])} style={styles.fileInputHidden} />
+        </label>
+        {file && <span style={styles.fileName}>{file.name}</span>}
         <button type="submit" disabled={uploading} style={styles.btn}>
           {uploading ? 'Subiendo...' : 'Subir'}
         </button>
@@ -104,6 +113,9 @@ const styles = {
   form: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' },
   select: { padding: '7px 10px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13 },
   fileInput: { fontSize: 13, flex: 1, minWidth: 160 },
+  fileBtn: { display:'inline-flex', alignItems:'center', gap:6, background:'#f1f5f9', color:'#334155', border:'1px solid #cbd5e1', borderRadius:6, padding:'7px 12px', fontSize:13, fontWeight:600, cursor:'pointer' },
+  fileInputHidden: { display:'none' },
+  fileName: { fontSize:12, color:'#64748b', fontStyle:'italic' },
   btn: { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   error: { color: '#c0392b', fontSize: 12, marginBottom: 8 },
   empty: { color: '#94a3b8', fontSize: 13, fontStyle: 'italic' },

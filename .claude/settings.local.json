@@ -7,7 +7,10 @@
       "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); node --version)",
       "Bash(cp \"/c/Users/User/Downloads/Autoelevador.jpg\" \"/c/Users/User/Documents/Proyecto App/Gestion de Flotas/public/icono-maquinas.jpg\")",
       "Bash(cd \"/c/Users/User/Documents/Proyecto App/Gestion de Flotas/src/pages\" && grep -n \"page: {\" *.jsx)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(python scripts/office/validate.py Instructivo_Gestion_de_Flotas.docx)",
+      "Bash(python \"C:\\\\Users\\\\User\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\a10968df-88fb-4170-badf-927cd3eb3dc9\\\\ca10778d-54c4-4814-946b-945ac5f3c687\\\\skills\\\\docx\\\\scripts\\\\office\\\\validate.py\" \"C:\\\\Users\\\\User\\\\Downloads\\\\Instructivo_Gestion_de_Flotas.docx\")",
+      "Bash(python -c ' *)"
     ]
   }
 }
