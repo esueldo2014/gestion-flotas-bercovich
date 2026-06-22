@@ -1,11 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-const TIPOS = ['Presupuesto', 'Factura', 'Otro'];
+const TIPOS = ['Foto de la rotura', 'Presupuesto', 'Factura', 'Otro'];
+
+const BADGE_COLORS = {
+  'Foto de la rotura': { background: '#fee2e2', color: '#991b1b' },
+  'Factura':           { background: '#dcfce7', color: '#166534' },
+  'Presupuesto':       { background: '#fef9c3', color: '#854d0e' },
+};
 
 export default function AdjuntosPanel({ correctivoId }) {
   const [adjuntos, setAdjuntos] = useState([]);
-  const [tipo, setTipo]         = useState('Presupuesto');
+  const [tipo, setTipo]         = useState('Foto de la rotura');
   const [file, setFile]         = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError]       = useState(null);
@@ -62,7 +68,7 @@ export default function AdjuntosPanel({ correctivoId }) {
 
   return (
     <div style={styles.wrap}>
-      <h4 style={styles.title}>Presupuestos y facturas</h4>
+      <h4 style={styles.title}>Fotos y archivos</h4>
 
       <form onSubmit={handleUpload} style={styles.form}>
         <select value={tipo} onChange={e => setTipo(e.target.value)} style={styles.select}>
@@ -91,7 +97,7 @@ export default function AdjuntosPanel({ correctivoId }) {
         <ul style={styles.list}>
           {adjuntos.map(a => (
             <li key={a.id} style={styles.item}>
-              <span style={{ ...styles.tipoBadge, ...(a.tipo === 'Factura' ? styles.factura : styles.presupuesto) }}>
+              <span style={{ ...styles.tipoBadge, ...(BADGE_COLORS[a.tipo] ?? styles.presupuesto) }}>
                 {a.tipo}
               </span>
               <a href={a.url} target="_blank" rel="noopener noreferrer" style={styles.link}>

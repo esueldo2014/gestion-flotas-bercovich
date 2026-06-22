@@ -56,11 +56,13 @@ export default function CorrectivosPage() {
     if (editing) {
       const { error } = await supabase.from('correctivos').update(payload).eq('id', editing.id);
       if (error) throw error;
+      setShowForm(false); setEditing(null);
     } else {
-      const { error } = await supabase.from('correctivos').insert(payload);
+      const { data, error } = await supabase.from('correctivos').insert(payload).select().single();
       if (error) throw error;
+      // dejamos el formulario abierto en modo edición para poder sacar la foto de la rotura
+      setEditing(data);
     }
-    setShowForm(false); setEditing(null);
     await fetchAll();
   }
 
