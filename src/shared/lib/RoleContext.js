@@ -26,4 +26,5 @@ export const can = {
   aprobarSolicitudRRHH:    (rol) => ['Supervisor', 'Gerencia'].includes(rol), // HHEE, compensatorios, vacaciones
   asignarVacaciones:       (rol) => rol === 'Gerencia',
   verInformeRRHH:          (rol) => rol === 'Gerencia',
+  gestionarEquipo:         (rol) => rol === 'Gerencia',
 };

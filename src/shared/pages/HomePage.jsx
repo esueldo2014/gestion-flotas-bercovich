@@ -14,6 +14,7 @@ const TASK_ICONS = {
   hhee:           '⏰',
   compensatorios: '📅',
   vacaciones:     '🏖️',
+  equipo:         '🗂️',
 };
 
 export default function HomePage({ modulos, onEnter }) {

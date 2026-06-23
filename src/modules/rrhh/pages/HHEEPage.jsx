@@ -12,6 +12,7 @@ export default function HHEEPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const verTodo = puedeAprobar;
+  const soloMiDeposito = role?.rol === 'Supervisor'; // Gerencia ve todos los depósitos
 
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
@@ -22,16 +23,23 @@ export default function HHEEPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('hhee').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false });
-    if (!verTodo) query = query.eq('usuario_id', role.id);
+    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email');
+    if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
+
     const [{ data: hhee }, { data: us }] = await Promise.all([
-      query,
-      verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      supabase.from('hhee').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false }),
+      verTodo ? usQuery : Promise.resolve({ data: [] }),
     ]);
-    setRegistros(hhee ?? []);
+
+    const idsVisibles = verTodo ? new Set(us?.map(u => u.id)) : null;
+    const filtrados = verTodo
+      ? (hhee ?? []).filter(r => idsVisibles.has(r.usuario_id))
+      : (hhee ?? []).filter(r => r.usuario_id === role.id);
+
+    setRegistros(filtrados);
     setUsuarios(us ?? []);
     setLoading(false);
-  }, [verTodo, role?.id]);
+  }, [verTodo, soloMiDeposito, role?.id, role?.deposito_id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

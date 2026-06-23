@@ -13,6 +13,7 @@ export default function CompensatoriosPage() {
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const puedeGenerar = can.generarCompensatorio(role?.rol);
   const verTodo = puedeAprobar;
+  const soloMiDeposito = role?.rol === 'Supervisor'; // Gerencia ve todos los depósitos
 
   const [movimientos, setMovimientos] = useState([]);
   const [saldos, setSaldos]           = useState([]);
@@ -25,18 +26,25 @@ export default function CompensatoriosPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    let movQuery = supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false });
-    if (!verTodo) movQuery = movQuery.eq('usuario_id', role.id);
+    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email');
+    if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
+
     const [{ data: mov }, { data: sal }, { data: us }] = await Promise.all([
-      movQuery,
+      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false }),
       supabase.from('dias_compensatorios_saldo').select('*'),
-      verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      verTodo ? usQuery : Promise.resolve({ data: [] }),
     ]);
-    setMovimientos(mov ?? []);
+
+    const idsVisibles = verTodo ? new Set(us?.map(u => u.id)) : null;
+    const filtrados = verTodo
+      ? (mov ?? []).filter(m => idsVisibles.has(m.usuario_id))
+      : (mov ?? []).filter(m => m.usuario_id === role.id);
+
+    setMovimientos(filtrados);
     setSaldos(sal ?? []);
     setUsuarios(us ?? []);
     setLoading(false);
-  }, [verTodo, role?.id]);
+  }, [verTodo, soloMiDeposito, role?.id, role?.deposito_id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
