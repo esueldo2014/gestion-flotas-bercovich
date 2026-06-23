@@ -2,6 +2,14 @@
 html, body { margin: 0; padding: 0; overflow-x: hidden; }
 img { max-width: 100%; }
 
+.print-only { display: none; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white; }
+}
+
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

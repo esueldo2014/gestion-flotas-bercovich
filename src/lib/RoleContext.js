@@ -16,7 +16,7 @@ export const can = {
   verTodosDepositos:(rol) => rol === 'Gerencia',
 
   // mantenimiento edilicio
-  gestionarCotizaciones: (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  gestionarCotizaciones: (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
   aprobarEdilicio:       (rol) => rol === 'Gerencia',
   ejecutarCerrarEdilicio:(rol) => ['Supervisor', 'Gerencia'].includes(rol),
 };

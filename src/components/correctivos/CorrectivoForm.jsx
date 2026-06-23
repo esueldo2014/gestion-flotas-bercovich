@@ -25,9 +25,40 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel, ve
   }
 
   const isEdit = !!initial?.id;
+  const maquinaInfo = initial?.maquinas
+    ?? machines.find(m => m.id === form.maquina_id);
+
+  function handlePrint() { window.print(); }
 
   return (
-    <div style={styles.overlay}>
+    <>
+      {isEdit && (
+        <div className="print-only" style={printStyles.wrap}>
+          <h2 style={printStyles.h1}>Orden de trabajo — Correctivo</h2>
+          <p style={printStyles.sub}>Grupo Bercovich / Tu Mundo Distribución</p>
+          <table style={printStyles.table}>
+            <tbody>
+              <tr><td style={printStyles.tdLabel}>Máquina</td><td style={printStyles.td}>{maquinaInfo ? `${maquinaInfo.numero_interno} — ${maquinaInfo.marca ?? ''} ${maquinaInfo.modelo ?? ''}` : '—'}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Fecha de reporte</td><td style={printStyles.td}>{initial.fecha_reporte ? new Date(initial.fecha_reporte).toLocaleString('es-AR') : '—'}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Estado</td><td style={printStyles.td}>{form.estado}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Categoría</td><td style={printStyles.td}>{form.categoria || '—'}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Descripción de la falla</td><td style={printStyles.td}>{form.descripcion}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Reportado por</td><td style={printStyles.td}>{form.reportado_por || '—'}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Asignado a</td><td style={printStyles.td}>{form.asignado_a || '—'}</td></tr>
+              <tr><td style={printStyles.tdLabel}>Repuestos utilizados</td><td style={printStyles.td}>{form.repuestos || '—'}</td></tr>
+              {verCostos && (
+                <tr><td style={printStyles.tdLabel}>Costo total</td><td style={printStyles.td}>{form.costo_total ? `$${Number(form.costo_total).toLocaleString('es-AR')}` : '—'}</td></tr>
+              )}
+            </tbody>
+          </table>
+          <div style={printStyles.firma}>
+            <div style={printStyles.firmaLine}>Firma operario</div>
+            <div style={printStyles.firmaLine}>Firma mecánico / supervisor</div>
+          </div>
+        </div>
+      )}
+
+      <div style={styles.overlay} className="no-print">
       <form onSubmit={submit} style={styles.card} className="modal-card">
         <h3 style={styles.title}>{isEdit ? 'Editar orden de trabajo' : 'Nueva orden de trabajo'}</h3>
 
@@ -99,6 +130,9 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel, ve
         {isEdit && <AdjuntosPanel correctivoId={initial.id} />}
 
         <div style={styles.actions}>
+          {isEdit && (
+            <button type="button" onClick={handlePrint} style={styles.btnPrint}>🖨️ Imprimir OT</button>
+          )}
           <button type="button" onClick={onCancel} style={styles.btnSecondary}>{soloLectura ? 'Cerrar' : 'Cancelar'}</button>
           {!soloLectura && (
             <button type="submit" disabled={saving} style={styles.btnPrimary}>
@@ -107,7 +141,8 @@ export default function CorrectivoForm({ machines, initial, onSave, onCancel, ve
           )}
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -123,4 +158,16 @@ const styles = {
   actions: { display:'flex', justifyContent:'flex-end', gap:10, marginTop:20 },
   btnPrimary: { background:'#2563eb', color:'#fff', border:'none', borderRadius:6, padding:'9px 22px', fontSize:14, fontWeight:600, cursor:'pointer' },
   btnSecondary: { background:'#f1f5f9', color:'#333', border:'1px solid #ccc', borderRadius:6, padding:'9px 22px', fontSize:14, cursor:'pointer' },
+  btnPrint: { background:'#f1f5f9', color:'#1e293b', border:'1px solid #cbd5e1', borderRadius:6, padding:'9px 16px', fontSize:14, fontWeight:600, cursor:'pointer', marginRight:'auto' },
+};
+
+const printStyles = {
+  wrap: { maxWidth:700, margin:'30px auto', fontFamily:'system-ui, sans-serif', padding:'0 20px' },
+  h1: { margin:'0 0 4px', fontSize:20 },
+  sub: { margin:'0 0 20px', fontSize:13, color:'#666' },
+  table: { width:'100%', borderCollapse:'collapse', fontSize:14 },
+  tdLabel: { padding:'8px 10px', fontWeight:700, width:'30%', verticalAlign:'top', border:'1px solid #ccc', background:'#f5f5f5' },
+  td: { padding:'8px 10px', border:'1px solid #ccc', verticalAlign:'top' },
+  firma: { display:'flex', justifyContent:'space-between', marginTop:60 },
+  firmaLine: { borderTop:'1px solid #333', paddingTop:6, width:'45%', textAlign:'center', fontSize:13 },
 };
