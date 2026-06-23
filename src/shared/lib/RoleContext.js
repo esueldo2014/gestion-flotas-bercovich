@@ -19,4 +19,11 @@ export const can = {
   gestionarCotizaciones: (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
   aprobarEdilicio:       (rol) => rol === 'Gerencia',
   ejecutarCerrarEdilicio:(rol) => ['Supervisor', 'Gerencia'].includes(rol),
+
+  // rrhh
+  registrarCapacitacion:   (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  generarCompensatorio:    (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  aprobarSolicitudRRHH:    (rol) => ['Supervisor', 'Gerencia'].includes(rol), // HHEE, compensatorios, vacaciones
+  asignarVacaciones:       (rol) => rol === 'Gerencia',
+  verInformeRRHH:          (rol) => rol === 'Gerencia',
 };
