@@ -8,7 +8,7 @@ import HorometroPage    from './modules/mantenimiento/pages/HorometroPage';
 import PlanPage         from './modules/mantenimiento/pages/PlanPage';
 import CorrectivosPage  from './modules/mantenimiento/pages/CorrectivosPage';
 import DashboardPage    from './modules/mantenimiento/pages/DashboardPage';
-import HomePage          from './modules/mantenimiento/pages/HomePage';
+import HomePage          from './shared/pages/HomePage';
 import InformePage       from './modules/mantenimiento/pages/InformePage';
 import EdilicioPage      from './modules/mantenimiento/pages/EdilicioPage';
 import CombustiblePage   from './modules/mantenimiento/pages/CombustiblePage';
@@ -18,7 +18,6 @@ import CompensatoriosPage from './modules/rrhh/pages/CompensatoriosPage';
 import VacacionesPage     from './modules/rrhh/pages/VacacionesPage';
 
 const NAV_MANTENIMIENTO = [
-  { id:'inicio',       label:'Inicio',          show: () => true },
   { id:'dashboard',    label:'Dashboard',       show: (rol) => can.verDashboard(rol) },
   { id:'maquinas',     label:'Máquinas',        show: () => true },
   { id:'horometro',    label:'Horómetro / Km',  show: () => true },
@@ -45,7 +44,7 @@ export default function App() {
   const [user, setUser]         = useState(null);
   const [role, setRole]         = useState(null);
   const [modulo, setModulo]     = useState('mantenimiento');
-  const [page, setPage]         = useState('inicio');
+  const [page, setPage]         = useState('home');
   const [checking, setChecking] = useState(true);
   const [showChangePw, setShowChangePw] = useState(false);
 
@@ -83,7 +82,7 @@ export default function App() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    setPage('inicio');
+    setPage('home');
   }
 
   if (checking) return <div style={styles.loading}>Cargando...</div>;
@@ -113,32 +112,37 @@ export default function App() {
     );
   }
 
-  const moduloActual = MODULOS.find(m => m.id === modulo) ?? MODULOS[0];
-  const visibleNav = moduloActual.nav.filter(n => n.show(role.rol));
+  const modulosConNav = MODULOS.map(m => ({ ...m, nav: m.nav.filter(n => n.show(role.rol)) }));
+  const moduloActual = modulosConNav.find(m => m.id === modulo) ?? modulosConNav[0];
+  const visibleNav = moduloActual.nav;
   // si la página actual no es visible para este rol/módulo, mostrar la primera disponible
-  const currentPage = visibleNav.some(n => n.id === page) ? page : visibleNav[0]?.id;
+  const currentPage = page === 'home' ? 'home' : (visibleNav.some(n => n.id === page) ? page : visibleNav[0]?.id);
 
   function handleSetModulo(id) {
     setModulo(id);
-    setPage(MODULOS.find(m => m.id === id)?.nav[0]?.id);
+    setPage(modulosConNav.find(m => m.id === id)?.nav[0]?.id);
   }
 
   return (
     <RoleContext.Provider value={role}>
       <div>
         <nav style={styles.nav} className="no-print">
-          <button onClick={() => handleSetModulo('mantenimiento')} style={styles.brand}>
+          <button onClick={() => setPage('home')} style={styles.brand}>
             <img src="/logo-bercovich.jpg" alt="Grupo Bercovich" style={styles.logo} />
           </button>
           <div style={styles.moduloSwitch}>
-            {MODULOS.map(m => (
+            {modulosConNav.map(m => (
               <button key={m.id} onClick={() => handleSetModulo(m.id)}
-                style={{ ...styles.moduloBtn, ...(modulo === m.id ? styles.moduloBtnActive : {}) }}>
+                style={{ ...styles.moduloBtn, ...(modulo === m.id && page !== 'home' ? styles.moduloBtnActive : {}) }}>
                 {m.label}
               </button>
             ))}
           </div>
           <div style={styles.navLinks} className="nav-links-wrap">
+            <button onClick={() => setPage('home')}
+              style={{ ...styles.navBtn, ...(currentPage === 'home' ? styles.navBtnActive : {}) }}>
+              Inicio
+            </button>
             {visibleNav.map(n => (
               <button key={n.id} onClick={() => setPage(n.id)}
                 style={{ ...styles.navBtn, ...(currentPage === n.id ? styles.navBtnActive : {}) }}>
@@ -154,9 +158,10 @@ export default function App() {
           </div>
         </nav>
 
-        {modulo === 'mantenimiento' && (
+        {currentPage === 'home' ? (
+          <HomePage modulos={modulosConNav} onEnter={(modId, pageId) => { setModulo(modId); setPage(pageId); }} />
+        ) : modulo === 'mantenimiento' ? (
           <>
-            {currentPage === 'inicio'      && <HomePage nav={visibleNav.filter(n => n.id !== 'inicio')} onNavigate={setPage} />}
             {currentPage === 'dashboard'   && <DashboardPage />}
             {currentPage === 'maquinas'    && <MachinesPage />}
             {currentPage === 'horometro'   && <HorometroPage />}
@@ -166,9 +171,7 @@ export default function App() {
             {currentPage === 'edilicio'    && <EdilicioPage />}
             {currentPage === 'informe'     && <InformePage />}
           </>
-        )}
-
-        {modulo === 'rrhh' && (
+        ) : (
           <>
             {currentPage === 'capacitaciones' && <CapacitacionesPage />}
             {currentPage === 'hhee'           && <HHEEPage />}
