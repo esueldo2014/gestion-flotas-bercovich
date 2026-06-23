@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { RoleContext, can } from './lib/RoleContext';
 import LoginPage        from './pages/LoginPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import MachinesPage     from './pages/MachinesPage';
 import HorometroPage    from './pages/HorometroPage';
 import PlanPage         from './pages/PlanPage';
@@ -29,6 +30,9 @@ export default function App() {
   const [role, setRole]         = useState(null);
   const [page, setPage]         = useState('inicio');
   const [checking, setChecking] = useState(true);
+  const [showChangePw, setShowChangePw] = useState(false);
+
+  const PASSWORD_MAX_AGE_DAYS = 90;
 
   const fetchRole = useCallback(async (currentUser) => {
     if (!currentUser) { setRole(null); return; }
@@ -78,6 +82,20 @@ export default function App() {
     );
   }
 
+  const passwordExpired = !role.password_changed_at ||
+    (Date.now() - new Date(role.password_changed_at).getTime()) > PASSWORD_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+  if (passwordExpired || showChangePw) {
+    return (
+      <ChangePasswordPage
+        user={user}
+        forced={passwordExpired}
+        onDone={async () => { setShowChangePw(false); await fetchRole(user); }}
+        onCancel={() => setShowChangePw(false)}
+      />
+    );
+  }
+
   const visibleNav = NAV.filter(n => n.show(role.rol));
   // si la página actual no es visible para este rol, mostrar la primera disponible
   const currentPage = visibleNav.some(n => n.id === page) ? page : visibleNav[0]?.id;
@@ -100,6 +118,7 @@ export default function App() {
           <div style={styles.userArea}>
             <span style={styles.userRol}>{role.rol}</span>
             <span style={styles.userEmail} className="hide-mobile">{user.email}</span>
+            <button onClick={() => setShowChangePw(true)} style={styles.logoutBtn}>Contraseña</button>
             <button onClick={handleLogout} style={styles.logoutBtn}>Salir</button>
           </div>
         </nav>
