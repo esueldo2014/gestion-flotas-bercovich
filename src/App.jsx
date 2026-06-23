@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from './lib/supabaseClient';
-import { RoleContext, can } from './lib/RoleContext';
-import LoginPage        from './pages/LoginPage';
-import ChangePasswordPage from './pages/ChangePasswordPage';
-import MachinesPage     from './pages/MachinesPage';
-import HorometroPage    from './pages/HorometroPage';
-import PlanPage         from './pages/PlanPage';
-import CorrectivosPage  from './pages/CorrectivosPage';
-import DashboardPage    from './pages/DashboardPage';
-import HomePage          from './pages/HomePage';
-import InformePage       from './pages/InformePage';
-import EdilicioPage      from './pages/EdilicioPage';
-import CombustiblePage   from './pages/CombustiblePage';
+import { supabase } from './shared/lib/supabaseClient';
+import { RoleContext, can } from './shared/lib/RoleContext';
+import LoginPage        from './shared/pages/LoginPage';
+import ChangePasswordPage from './shared/pages/ChangePasswordPage';
+import MachinesPage     from './modules/mantenimiento/pages/MachinesPage';
+import HorometroPage    from './modules/mantenimiento/pages/HorometroPage';
+import PlanPage         from './modules/mantenimiento/pages/PlanPage';
+import CorrectivosPage  from './modules/mantenimiento/pages/CorrectivosPage';
+import DashboardPage    from './modules/mantenimiento/pages/DashboardPage';
+import HomePage          from './modules/mantenimiento/pages/HomePage';
+import InformePage       from './modules/mantenimiento/pages/InformePage';
+import EdilicioPage      from './modules/mantenimiento/pages/EdilicioPage';
+import CombustiblePage   from './modules/mantenimiento/pages/CombustiblePage';
 
 const NAV = [
   { id:'inicio',       label:'Inicio',          show: () => true },

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../../../shared/lib/supabaseClient';
 
 const TIPOS = ['Foto de la rotura', 'Presupuesto', 'Factura', 'Otro'];
 

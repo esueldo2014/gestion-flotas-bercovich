@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { useRole, can } from '../lib/RoleContext';
+import { supabase } from '../../../shared/lib/supabaseClient';
+import { useRole, can } from '../../../shared/lib/RoleContext';
 import EdilicioForm from '../components/edilicios/EdilicioForm';
 import ProvinciaTabs from '../components/common/ProvinciaTabs';
 

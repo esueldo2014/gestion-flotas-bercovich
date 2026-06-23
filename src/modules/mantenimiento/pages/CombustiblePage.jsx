@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../../../shared/lib/supabaseClient';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 import DepositoResumen from '../components/common/DepositoResumen';
 
