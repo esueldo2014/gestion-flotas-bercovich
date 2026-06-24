@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../shared/lib/supabaseClient';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CATEGORIAS_INVENTARIO = ['PRE INVENTARIO', 'INVENTARIO'];
+const esInventario = (cat) => CATEGORIAS_INVENTARIO.includes(cat);
 
 export default function CierreHHEEPage() {
   const now = new Date();
@@ -63,19 +65,27 @@ export default function CierreHHEEPage() {
   const tarifa50  = parseFloat(valor50) || 0;
   const tarifa100 = parseFloat(valor100) || 0;
 
-  // agrupar por empleado
+  // agrupar por empleado, separando Inventario (PRE INVENTARIO + INVENTARIO) del resto
   const porEmpleado = {};
   registros.forEach(r => {
     const key = r.usuario_id;
     if (!porEmpleado[key]) {
       porEmpleado[key] = {
         nombre: r.usuarios_roles?.nombre || r.usuarios_roles?.email || 'Sin nombre',
-        horas50: 0, horas100: 0, categorias: new Set(),
+        horas50: 0, horas100: 0,
+        horas50Inv: 0, horas100Inv: 0,
+        categorias: new Set(), categoriasInv: new Set(),
       };
     }
-    if (r.tipo === '100%') porEmpleado[key].horas100 += Number(r.horas);
-    else porEmpleado[key].horas50 += Number(r.horas);
-    if (r.categoria) porEmpleado[key].categorias.add(r.categoria);
+    const f = porEmpleado[key];
+    const horas = Number(r.horas);
+    if (esInventario(r.categoria)) {
+      if (r.tipo === '100%') f.horas100Inv += horas; else f.horas50Inv += horas;
+      if (r.categoria) f.categoriasInv.add(r.categoria);
+    } else {
+      if (r.tipo === '100%') f.horas100 += horas; else f.horas50 += horas;
+      if (r.categoria) f.categorias.add(r.categoria);
+    }
   });
 
   const filas = Object.values(porEmpleado)
@@ -83,15 +93,22 @@ export default function CierreHHEEPage() {
       ...f,
       monto50: f.horas50 * tarifa50,
       monto100: f.horas100 * tarifa100,
+      monto50Inv: f.horas50Inv * tarifa50,
+      monto100Inv: f.horas100Inv * tarifa100,
       observaciones: Array.from(f.categorias).join(' + '),
+      observacionesInv: Array.from(f.categoriasInv).join(' + '),
     }))
     .sort((a,b) => a.nombre.localeCompare(b.nombre));
 
-  const totalHoras50  = filas.reduce((s,f) => s + f.horas50, 0);
-  const totalHoras100 = filas.reduce((s,f) => s + f.horas100, 0);
-  const totalMonto50  = filas.reduce((s,f) => s + f.monto50, 0);
-  const totalMonto100 = filas.reduce((s,f) => s + f.monto100, 0);
-  const totalGeneral  = totalMonto50 + totalMonto100;
+  const totalHoras50     = filas.reduce((s,f) => s + f.horas50, 0);
+  const totalHoras100    = filas.reduce((s,f) => s + f.horas100, 0);
+  const totalHoras50Inv  = filas.reduce((s,f) => s + f.horas50Inv, 0);
+  const totalHoras100Inv = filas.reduce((s,f) => s + f.horas100Inv, 0);
+  const totalMonto50     = filas.reduce((s,f) => s + f.monto50, 0);
+  const totalMonto100    = filas.reduce((s,f) => s + f.monto100, 0);
+  const totalMonto50Inv  = filas.reduce((s,f) => s + f.monto50Inv, 0);
+  const totalMonto100Inv = filas.reduce((s,f) => s + f.monto100Inv, 0);
+  const totalGeneral     = totalMonto50 + totalMonto100 + totalMonto50Inv + totalMonto100Inv;
 
   // agrupar por categoría
   const porCategoria = {};
@@ -105,9 +122,13 @@ export default function CierreHHEEPage() {
 
   function descargarExcel() {
     const filasCsv = [
-      ['Empleado', 'Horas 50%', 'Horas 100%', '$ 50%', '$ 100%', 'TOTAL $', 'Observaciones'],
-      ...filas.map(f => [f.nombre, f.horas50, f.horas100, money(f.monto50), money(f.monto100), money(f.monto50 + f.monto100), f.observaciones]),
-      ['TOTAL', totalHoras50, totalHoras100, money(totalMonto50), money(totalMonto100), money(totalGeneral), ''],
+      ['Empleado', 'HS EXT 50%', 'HS EXT 100%', 'INVENTARIO 50%', 'INVENTARIO 100%', 'TOTAL $', 'Observaciones'],
+      ...filas.map(f => [
+        f.nombre, money(f.monto50), money(f.monto100), money(f.monto50Inv), money(f.monto100Inv),
+        money(f.monto50 + f.monto100 + f.monto50Inv + f.monto100Inv),
+        [f.observaciones, f.observacionesInv].filter(Boolean).join(' + '),
+      ]),
+      ['TOTAL', money(totalMonto50), money(totalMonto100), money(totalMonto50Inv), money(totalMonto100Inv), money(totalGeneral), ''],
       [],
       ['Valor hora 50%', money(tarifa50)],
       ['Valor hora 100%', money(tarifa100)],
@@ -169,13 +190,15 @@ export default function CierreHHEEPage() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  <th style={styles.th}>Empleado</th>
-                  <th style={styles.th}>Horas 50%</th>
-                  <th style={styles.th}>Horas 100%</th>
-                  <th style={styles.th}>$ 50%</th>
-                  <th style={styles.th}>$ 100%</th>
-                  <th style={styles.th}>TOTAL $</th>
-                  <th style={styles.th}>Observaciones</th>
+                  <th style={styles.th} rowSpan={2}>Empleado</th>
+                  <th style={styles.th} colSpan={3}>HS EXT</th>
+                  <th style={styles.th} colSpan={3}>INVENTARIO</th>
+                  <th style={styles.th} rowSpan={2}>TOTAL $</th>
+                  <th style={styles.th} rowSpan={2}>Observaciones</th>
+                </tr>
+                <tr>
+                  <th style={styles.th}>Hs 50%</th><th style={styles.th}>Hs 100%</th><th style={styles.th}>$</th>
+                  <th style={styles.th}>Hs 50%</th><th style={styles.th}>Hs 100%</th><th style={styles.th}>$</th>
                 </tr>
               </thead>
               <tbody>
@@ -184,18 +207,22 @@ export default function CierreHHEEPage() {
                     <td style={{ ...styles.td, fontWeight:700 }}>{f.nombre}</td>
                     <td style={styles.td}>{f.horas50}</td>
                     <td style={styles.td}>{f.horas100}</td>
-                    <td style={styles.td}>${money(f.monto50)}</td>
-                    <td style={styles.td}>${money(f.monto100)}</td>
-                    <td style={{ ...styles.td, fontWeight:700 }}>${money(f.monto50 + f.monto100)}</td>
-                    <td style={styles.td}>{f.observaciones || '—'}</td>
+                    <td style={styles.td}>${money(f.monto50 + f.monto100)}</td>
+                    <td style={styles.td}>{f.horas50Inv}</td>
+                    <td style={styles.td}>{f.horas100Inv}</td>
+                    <td style={styles.td}>${money(f.monto50Inv + f.monto100Inv)}</td>
+                    <td style={{ ...styles.td, fontWeight:700 }}>${money(f.monto50 + f.monto100 + f.monto50Inv + f.monto100Inv)}</td>
+                    <td style={styles.td}>{[f.observaciones, f.observacionesInv].filter(Boolean).join(' + ') || '—'}</td>
                   </tr>
                 ))}
                 <tr style={styles.trTotal}>
                   <td style={styles.td}>TOTAL</td>
                   <td style={styles.td}>{totalHoras50}</td>
                   <td style={styles.td}>{totalHoras100}</td>
-                  <td style={styles.td}>${money(totalMonto50)}</td>
-                  <td style={styles.td}>${money(totalMonto100)}</td>
+                  <td style={styles.td}>${money(totalMonto50 + totalMonto100)}</td>
+                  <td style={styles.td}>{totalHoras50Inv}</td>
+                  <td style={styles.td}>{totalHoras100Inv}</td>
+                  <td style={styles.td}>${money(totalMonto50Inv + totalMonto100Inv)}</td>
                   <td style={styles.td}>${money(totalGeneral)}</td>
                   <td style={styles.td}></td>
                 </tr>
