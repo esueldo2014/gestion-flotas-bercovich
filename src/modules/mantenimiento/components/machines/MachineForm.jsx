@@ -12,13 +12,14 @@ const emptyForm = {
   numero_motor: '',
   numero_chasis: '',
   deposito_id: '',
+  rubro_deposito_id: '',
   fecha_alta: new Date().toISOString().split('T')[0],
   estado: 'Operativo',
   capacidad_patente: '',
   hora_inicial: '',
 };
 
-export default function MachineForm({ depositos, initial, onSave, onCancel }) {
+export default function MachineForm({ depositos, rubros, initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial ?? emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -30,6 +31,12 @@ export default function MachineForm({ depositos, initial, onSave, onCancel }) {
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
   }
+
+  function handleSucursal(e) {
+    setForm(f => ({ ...f, deposito_id: e.target.value, rubro_deposito_id: '' }));
+  }
+
+  const rubrosDeLaSucursal = (rubros ?? []).filter(r => String(r.sucursal_id) === String(form.deposito_id));
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -72,11 +79,22 @@ export default function MachineForm({ depositos, initial, onSave, onCancel }) {
 
           <div style={styles.field}>
             <label style={styles.label}>Sucursal *</label>
-            <select name="deposito_id" value={form.deposito_id} onChange={handleChange}
+            <select name="deposito_id" value={form.deposito_id} onChange={handleSucursal}
               style={styles.input} required>
               <option value="">Seleccionar...</option>
               {depositos.map(d => (
                 <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>Depósito (rubro)</label>
+            <select name="rubro_deposito_id" value={form.rubro_deposito_id} onChange={handleChange}
+              style={styles.input} disabled={!form.deposito_id}>
+              <option value="">{form.deposito_id ? 'Seleccionar...' : 'Elegí primero una sucursal'}</option>
+              {rubrosDeLaSucursal.map(r => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
               ))}
             </select>
           </div>

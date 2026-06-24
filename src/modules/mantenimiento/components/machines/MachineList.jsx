@@ -4,8 +4,9 @@ const ESTADO_COLORS = {
   'Fuera de servicio':{ bg: '#fee2e2', text: '#991b1b' },
 };
 
-export default function MachineList({ machines, depositos, filterDeposito, onFilterChange, onEdit, onDelete }) {
+export default function MachineList({ machines, depositos, rubros = [], filterDeposito, onFilterChange, onEdit, onDelete }) {
   const depositoMap = Object.fromEntries(depositos.map(d => [d.id, d]));
+  const rubroMap = Object.fromEntries(rubros.map(r => [r.id, r]));
 
   const filtered = filterDeposito
     ? machines.filter(m => String(m.deposito_id) === String(filterDeposito))
@@ -33,7 +34,7 @@ export default function MachineList({ machines, depositos, filterDeposito, onFil
           <table style={styles.table}>
             <thead>
               <tr>
-                {['N° interno','Tipo','Marca / Modelo','Sucursal','Estado','Capacidad / Patente','Acciones'].map(h => (
+                {['N° interno','Tipo','Marca / Modelo','Sucursal','Depósito','Estado','Capacidad / Patente','Acciones'].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -41,6 +42,7 @@ export default function MachineList({ machines, depositos, filterDeposito, onFil
             <tbody>
               {filtered.map(m => {
                 const dep = depositoMap[m.deposito_id];
+                const rubro = rubroMap[m.rubro_deposito_id];
                 const estadoStyle = ESTADO_COLORS[m.estado] ?? {};
                 return (
                   <tr key={m.id} style={styles.tr}>
@@ -48,6 +50,7 @@ export default function MachineList({ machines, depositos, filterDeposito, onFil
                     <td style={styles.td}>{m.tipo}</td>
                     <td style={styles.td}>{[m.marca, m.modelo, m.anio].filter(Boolean).join(' ')}</td>
                     <td style={styles.td}>{dep ? dep.code : '—'}</td>
+                    <td style={styles.td}>{rubro ? rubro.nombre : '—'}</td>
                     <td style={styles.td}>
                       <span style={{ ...styles.badge, background: estadoStyle.bg, color: estadoStyle.text }}>
                         {m.estado}

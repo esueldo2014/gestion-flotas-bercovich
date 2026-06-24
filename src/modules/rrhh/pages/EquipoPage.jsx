@@ -4,17 +4,20 @@ import { supabase } from '../../../shared/lib/supabaseClient';
 export default function EquipoPage() {
   const [usuarios, setUsuarios]   = useState([]);
   const [depositos, setDepositos] = useState([]);
+  const [rubros, setRubros]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: us }, { data: dep }] = await Promise.all([
+    const [{ data: us }, { data: dep }, { data: rub }] = await Promise.all([
       supabase.from('usuarios_roles').select('*').order('nombre'),
       supabase.from('sucursales').select('*').order('code'),
+      supabase.from('depositos').select('*').order('nombre'),
     ]);
     setUsuarios(us ?? []);
     setDepositos(dep ?? []);
+    setRubros(rub ?? []);
     setLoading(false);
   }, []);
 
@@ -22,7 +25,14 @@ export default function EquipoPage() {
 
   async function handleChange(u, deposito_id) {
     setSaving(u.id);
-    await supabase.from('usuarios_roles').update({ deposito_id: deposito_id || null }).eq('id', u.id);
+    await supabase.from('usuarios_roles').update({ deposito_id: deposito_id || null, rubro_deposito_id: null }).eq('id', u.id);
+    setSaving(null);
+    await fetchAll();
+  }
+
+  async function handleChangeRubro(u, rubro_deposito_id) {
+    setSaving(u.id);
+    await supabase.from('usuarios_roles').update({ rubro_deposito_id: rubro_deposito_id || null }).eq('id', u.id);
     setSaving(null);
     await fetchAll();
   }
@@ -39,7 +49,7 @@ export default function EquipoPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Nombre','Email','Rol','Sucursal'].map(h => <th key={h} style={styles.th}>{h}</th>)}
+                {['Nombre','Email','Rol','Sucursal','Depósito'].map(h => <th key={h} style={styles.th}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -57,6 +67,18 @@ export default function EquipoPage() {
                     >
                       <option value="">Sin asignar</option>
                       {depositos.map(d => <option key={d.id} value={d.id}>{d.code}</option>)}
+                    </select>
+                  </td>
+                  <td style={styles.td}>
+                    <select
+                      value={u.rubro_deposito_id ?? ''}
+                      disabled={saving === u.id || !u.deposito_id}
+                      onChange={e => handleChangeRubro(u, e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="">{u.deposito_id ? 'Sin asignar' : 'Elegí primero una sucursal'}</option>
+                      {rubros.filter(r => String(r.sucursal_id) === String(u.deposito_id))
+                        .map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                     </select>
                   </td>
                 </tr>

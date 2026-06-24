@@ -11,6 +11,7 @@ export default function MachinesPage() {
   const puedeEditar = can.editarMaquinas(role?.rol);
   const [machines, setMachines] = useState([]);
   const [depositos, setDepositos] = useState([]);
+  const [rubros, setRubros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -21,12 +22,13 @@ export default function MachinesPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [{ data: maq, error: e1 }, { data: dep, error: e2 }] = await Promise.all([
+    const [{ data: maq, error: e1 }, { data: dep, error: e2 }, { data: rub }] = await Promise.all([
       supabase.from('maquinas').select('*').order('numero_interno'),
       supabase.from('sucursales').select('*').order('code'),
+      supabase.from('depositos').select('*').order('nombre'),
     ]);
     if (e1 || e2) { setError((e1 || e2).message); }
-    else { setMachines(maq); setDepositos(dep); }
+    else { setMachines(maq); setDepositos(dep); setRubros(rub ?? []); }
     setLoading(false);
   }, []);
 
@@ -37,6 +39,7 @@ export default function MachinesPage() {
       ...form,
       anio: form.anio ? parseInt(form.anio) : null,
       deposito_id: form.deposito_id ? parseInt(form.deposito_id) : null,
+      rubro_deposito_id: form.rubro_deposito_id ? parseInt(form.rubro_deposito_id) : null,
       hora_inicial: form.hora_inicial ? parseFloat(form.hora_inicial) : null,
     };
 
@@ -64,6 +67,7 @@ export default function MachinesPage() {
       ...machine,
       anio: machine.anio ?? '',
       deposito_id: machine.deposito_id ?? '',
+      rubro_deposito_id: machine.rubro_deposito_id ?? '',
       fecha_alta: machine.fecha_alta ?? new Date().toISOString().split('T')[0],
     });
     setShowForm(true);
@@ -103,6 +107,7 @@ export default function MachinesPage() {
           <MachineList
             machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
             depositos={depositos}
+            rubros={rubros}
             filterDeposito={filterDeposito}
             onFilterChange={setFilterDeposito}
             onEdit={puedeEditar ? handleEdit : null}
@@ -114,6 +119,7 @@ export default function MachinesPage() {
       {showForm && (
         <MachineForm
           depositos={depositos}
+          rubros={rubros}
           initial={editing}
           onSave={handleSave}
           onCancel={handleCancel}
