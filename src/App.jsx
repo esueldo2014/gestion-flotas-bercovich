@@ -17,6 +17,7 @@ import HHEEPage           from './modules/rrhh/pages/HHEEPage';
 import CompensatoriosPage from './modules/rrhh/pages/CompensatoriosPage';
 import VacacionesPage     from './modules/rrhh/pages/VacacionesPage';
 import EquipoPage         from './modules/rrhh/pages/EquipoPage';
+import CierreHHEEPage     from './modules/rrhh/pages/CierreHHEEPage';
 
 const NAV_MANTENIMIENTO = [
   { id:'dashboard',    label:'Dashboard',       show: (rol) => can.verDashboard(rol) },
@@ -32,6 +33,7 @@ const NAV_MANTENIMIENTO = [
 const NAV_RRHH = [
   { id:'capacitaciones',  label:'Capacitaciones',       show: () => true },
   { id:'hhee',            label:'Horas extra',          show: () => true },
+  { id:'cierre-hhee',     label:'Cierre HHEE',          show: (rol) => can.verCierreHHEE(rol) },
   { id:'compensatorios',  label:'Días compensatorios',  show: () => true },
   { id:'vacaciones',      label:'Vacaciones',           show: () => true },
   { id:'equipo',          label:'Equipo',               show: (rol) => can.gestionarEquipo(rol) },
@@ -177,6 +179,7 @@ export default function App() {
           <>
             {currentPage === 'capacitaciones' && <CapacitacionesPage />}
             {currentPage === 'hhee'           && <HHEEPage />}
+            {currentPage === 'cierre-hhee'    && <CierreHHEEPage />}
             {currentPage === 'compensatorios' && <CompensatoriosPage />}
             {currentPage === 'vacaciones'     && <VacacionesPage />}
             {currentPage === 'equipo'         && <EquipoPage />}
