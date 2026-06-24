@@ -13,7 +13,7 @@ export default function CompensatoriosPage() {
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const puedeGenerar = can.generarCompensatorio(role?.rol);
   const verTodo = puedeAprobar;
-  const soloMiDeposito = role?.rol === 'Supervisor'; // Gerencia ve todos los depósitos
+  const soloMiDeposito = false; // Supervisor y Gerencia ven todo
 
   const [movimientos, setMovimientos] = useState([]);
   const [saldos, setSaldos]           = useState([]);

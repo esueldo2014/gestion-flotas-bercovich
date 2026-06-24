@@ -12,7 +12,7 @@ export default function HHEEPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const verTodo = puedeAprobar;
-  const soloMiDeposito = role?.rol === 'Supervisor'; // Gerencia ve todos los depósitos
+  const soloMiDeposito = false; // Supervisor y Gerencia ven todo
 
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
