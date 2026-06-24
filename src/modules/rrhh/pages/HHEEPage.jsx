@@ -27,10 +27,19 @@ export default function HHEEPage() {
     let usQuery = supabase.from('usuarios_roles').select('id, nombre, email');
     if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
 
-    const [{ data: hhee }, { data: us }] = await Promise.all([
+    const [hheeRes, usRes] = await Promise.all([
       supabase.from('hhee').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false }),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
     ]);
+
+    if (hheeRes.error || usRes.error) {
+      setError((hheeRes.error || usRes.error).message);
+    } else {
+      setError(null);
+    }
+
+    const hhee = hheeRes.data;
+    const us = usRes.data;
 
     const idsVisibles = verTodo ? new Set(us?.map(u => u.id)) : null;
     const filtrados = verTodo

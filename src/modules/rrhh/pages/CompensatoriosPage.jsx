@@ -29,11 +29,21 @@ export default function CompensatoriosPage() {
     let usQuery = supabase.from('usuarios_roles').select('id, nombre, email');
     if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
 
-    const [{ data: mov }, { data: sal }, { data: us }] = await Promise.all([
+    const [movRes, salRes, usRes] = await Promise.all([
       supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false }),
       supabase.from('dias_compensatorios_saldo').select('*'),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
     ]);
+
+    if (movRes.error || salRes.error || usRes.error) {
+      setError((movRes.error || salRes.error || usRes.error).message);
+    } else {
+      setError(null);
+    }
+
+    const mov = movRes.data;
+    const sal = salRes.data;
+    const us = usRes.data;
 
     const idsVisibles = verTodo ? new Set(us?.map(u => u.id)) : null;
     const filtrados = verTodo
