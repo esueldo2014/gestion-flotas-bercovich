@@ -11,6 +11,21 @@ export default function CierreHHEEPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
 
+  const [valor50, setValor50]   = useState('');
+  const [valor100, setValor100] = useState('');
+  const [savingTarifa, setSavingTarifa] = useState(false);
+
+  const fetchTarifa = useCallback(async () => {
+    const { data } = await supabase
+      .from('hhee_tarifas')
+      .select('*')
+      .eq('anio', anio)
+      .eq('mes', mes)
+      .maybeSingle();
+    setValor50(data?.valor_hora_50 ?? '');
+    setValor100(data?.valor_hora_100 ?? '');
+  }, [mes, anio]);
+
   const fetchMes = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -31,7 +46,22 @@ export default function CierreHHEEPage() {
     setLoading(false);
   }, [mes, anio]);
 
-  useEffect(() => { fetchMes(); }, [fetchMes]);
+  useEffect(() => { fetchMes(); fetchTarifa(); }, [fetchMes, fetchTarifa]);
+
+  async function guardarTarifa(e) {
+    e.preventDefault();
+    setSavingTarifa(true);
+    const { error: err } = await supabase.from('hhee_tarifas').upsert({
+      anio, mes,
+      valor_hora_50: parseFloat(valor50) || 0,
+      valor_hora_100: parseFloat(valor100) || 0,
+    }, { onConflict: 'anio,mes' });
+    setSavingTarifa(false);
+    if (err) setError(err.message);
+  }
+
+  const tarifa50  = parseFloat(valor50) || 0;
+  const tarifa100 = parseFloat(valor100) || 0;
 
   // agrupar por empleado
   const porEmpleado = {};
@@ -40,16 +70,28 @@ export default function CierreHHEEPage() {
     if (!porEmpleado[key]) {
       porEmpleado[key] = {
         nombre: r.usuarios_roles?.nombre || r.usuarios_roles?.email || 'Sin nombre',
-        horas50: 0, horas100: 0,
+        horas50: 0, horas100: 0, categorias: new Set(),
       };
     }
     if (r.tipo === '100%') porEmpleado[key].horas100 += Number(r.horas);
     else porEmpleado[key].horas50 += Number(r.horas);
+    if (r.categoria) porEmpleado[key].categorias.add(r.categoria);
   });
 
-  const filas = Object.values(porEmpleado).sort((a,b) => a.nombre.localeCompare(b.nombre));
+  const filas = Object.values(porEmpleado)
+    .map(f => ({
+      ...f,
+      monto50: f.horas50 * tarifa50,
+      monto100: f.horas100 * tarifa100,
+      observaciones: Array.from(f.categorias).join(' + '),
+    }))
+    .sort((a,b) => a.nombre.localeCompare(b.nombre));
+
   const totalHoras50  = filas.reduce((s,f) => s + f.horas50, 0);
   const totalHoras100 = filas.reduce((s,f) => s + f.horas100, 0);
+  const totalMonto50  = filas.reduce((s,f) => s + f.monto50, 0);
+  const totalMonto100 = filas.reduce((s,f) => s + f.monto100, 0);
+  const totalGeneral  = totalMonto50 + totalMonto100;
 
   // agrupar por categoría
   const porCategoria = {};
@@ -59,11 +101,16 @@ export default function CierreHHEEPage() {
   });
   const filasCategoria = Object.entries(porCategoria).sort((a,b) => b[1]-a[1]);
 
+  function money(n) { return n.toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+
   function descargarExcel() {
     const filasCsv = [
-      ['Empleado', 'Horas 50%', 'Horas 100%', 'Total horas'],
-      ...filas.map(f => [f.nombre, f.horas50, f.horas100, f.horas50 + f.horas100]),
-      ['TOTAL', totalHoras50, totalHoras100, totalHoras50 + totalHoras100],
+      ['Empleado', 'Horas 50%', 'Horas 100%', '$ 50%', '$ 100%', 'TOTAL $', 'Observaciones'],
+      ...filas.map(f => [f.nombre, f.horas50, f.horas100, money(f.monto50), money(f.monto100), money(f.monto50 + f.monto100), f.observaciones]),
+      ['TOTAL', totalHoras50, totalHoras100, money(totalMonto50), money(totalMonto100), money(totalGeneral), ''],
+      [],
+      ['Valor hora 50%', money(tarifa50)],
+      ['Valor hora 100%', money(tarifa100)],
       [],
       ['Categoría', 'Horas'],
       ...filasCategoria.map(([cat, hs]) => [cat, hs]),
@@ -99,6 +146,19 @@ export default function CierreHHEEPage() {
         </select>
       </div>
 
+      <form onSubmit={guardarTarifa} style={styles.tarifaForm}>
+        <span style={styles.formLabel}>Valor de la hora para {MESES[mes-1]} {anio}:</span>
+        <label style={styles.tarifaLabel}>
+          50% $
+          <input type="number" step="0.01" min="0" value={valor50} onChange={e => setValor50(e.target.value)} style={styles.tarifaInput} placeholder="0.00" />
+        </label>
+        <label style={styles.tarifaLabel}>
+          100% $
+          <input type="number" step="0.01" min="0" value={valor100} onChange={e => setValor100(e.target.value)} style={styles.tarifaInput} placeholder="0.00" />
+        </label>
+        <button type="submit" disabled={savingTarifa} style={styles.btnNew}>{savingTarifa ? 'Guardando...' : 'Guardar valores'}</button>
+      </form>
+
       {error && <p style={styles.error}>{error}</p>}
 
       {loading ? <p style={styles.info}>Cargando...</p> : filas.length === 0 ? (
@@ -112,7 +172,10 @@ export default function CierreHHEEPage() {
                   <th style={styles.th}>Empleado</th>
                   <th style={styles.th}>Horas 50%</th>
                   <th style={styles.th}>Horas 100%</th>
-                  <th style={styles.th}>Total</th>
+                  <th style={styles.th}>$ 50%</th>
+                  <th style={styles.th}>$ 100%</th>
+                  <th style={styles.th}>TOTAL $</th>
+                  <th style={styles.th}>Observaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,14 +184,20 @@ export default function CierreHHEEPage() {
                     <td style={{ ...styles.td, fontWeight:700 }}>{f.nombre}</td>
                     <td style={styles.td}>{f.horas50}</td>
                     <td style={styles.td}>{f.horas100}</td>
-                    <td style={{ ...styles.td, fontWeight:700 }}>{f.horas50 + f.horas100}</td>
+                    <td style={styles.td}>${money(f.monto50)}</td>
+                    <td style={styles.td}>${money(f.monto100)}</td>
+                    <td style={{ ...styles.td, fontWeight:700 }}>${money(f.monto50 + f.monto100)}</td>
+                    <td style={styles.td}>{f.observaciones || '—'}</td>
                   </tr>
                 ))}
                 <tr style={styles.trTotal}>
                   <td style={styles.td}>TOTAL</td>
                   <td style={styles.td}>{totalHoras50}</td>
                   <td style={styles.td}>{totalHoras100}</td>
-                  <td style={styles.td}>{totalHoras50 + totalHoras100}</td>
+                  <td style={styles.td}>${money(totalMonto50)}</td>
+                  <td style={styles.td}>${money(totalMonto100)}</td>
+                  <td style={styles.td}>${money(totalGeneral)}</td>
+                  <td style={styles.td}></td>
                 </tr>
               </tbody>
             </table>
@@ -187,13 +256,18 @@ export default function CierreHHEEPage() {
 }
 
 const styles = {
-  page: { maxWidth:1100, margin:'0 auto', padding:'28px 20px', fontFamily:'system-ui, sans-serif' },
+  page: { maxWidth:1200, margin:'0 auto', padding:'28px 20px', fontFamily:'system-ui, sans-serif' },
   header: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, flexWrap:'wrap', gap:12 },
   title: { margin:0, fontSize:26, color:'#1a1a2e', fontWeight:700 },
   subtitle: { margin:'4px 0 0', fontSize:14, color:'#64748b' },
   btnDownload: { background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'10px 20px', fontSize:14, fontWeight:600, cursor:'pointer' },
-  controls: { display:'flex', gap:10, marginBottom:20 },
+  controls: { display:'flex', gap:10, marginBottom:16 },
   select: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14 },
+  tarifaForm: { display:'flex', gap:14, alignItems:'center', flexWrap:'wrap', marginBottom:20, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:'12px 16px' },
+  formLabel: { fontSize:13, fontWeight:600, color:'#475569' },
+  tarifaLabel: { display:'flex', alignItems:'center', gap:6, fontSize:13, fontWeight:600, color:'#374151' },
+  tarifaInput: { padding:'7px 10px', border:'1px solid #ccc', borderRadius:6, fontSize:13, width:110 },
+  btnNew: { background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer' },
   error: { color:'#c0392b', fontSize:13, marginBottom:12 },
   table: { width:'100%', borderCollapse:'collapse', fontSize:14, marginBottom:24 },
   th: { textAlign:'left', padding:'9px 12px', background:'#f1f5f9', color:'#374151', fontWeight:700, borderBottom:'2px solid #e2e8f0', whiteSpace:'nowrap' },
