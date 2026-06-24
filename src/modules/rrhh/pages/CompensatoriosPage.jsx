@@ -19,7 +19,7 @@ export default function CompensatoriosPage() {
   const [saldos, setSaldos]           = useState([]);
   const [usuarios, setUsuarios]       = useState([]);
   const [loading, setLoading]         = useState(true);
-  const [formUso, setFormUso]         = useState({ fecha:'', dias:'', motivo:'' });
+  const [formUso, setFormUso]         = useState({ usuario_id:'', fecha:'', dias:'', motivo:'' });
   const [formGen, setFormGen]         = useState({ usuario_id:'', fecha:'', dias:'', motivo:'' });
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState(null);
@@ -65,17 +65,21 @@ export default function CompensatoriosPage() {
     setError(null);
     const dias = parseFloat(formUso.dias);
     if (!formUso.fecha || !dias) return;
-    if (dias > miSaldo) {
-      setError(`No alcanza tu saldo disponible (${miSaldo} días).`);
+    if (verTodo && !formUso.usuario_id) { setError('Elegí para qué empleado es esta solicitud.'); return; }
+
+    const usuarioObjetivo = verTodo ? formUso.usuario_id : role.id;
+    const saldoObjetivo = saldos.find(s => s.usuario_id === usuarioObjetivo)?.saldo_dias ?? 0;
+    if (dias > saldoObjetivo) {
+      setError(`No alcanza el saldo disponible (${saldoObjetivo} días).`);
       return;
     }
     setSaving(true);
     const { error: err } = await supabase.from('dias_compensatorios_movimientos').insert({
-      usuario_id: role.id, tipo:'uso', fecha: formUso.fecha, dias, motivo: formUso.motivo || null,
+      usuario_id: usuarioObjetivo, tipo:'uso', fecha: formUso.fecha, dias, motivo: formUso.motivo || null,
     });
     setSaving(false);
     if (err) { setError(err.message); return; }
-    setFormUso({ fecha:'', dias:'', motivo:'' });
+    setFormUso({ usuario_id:'', fecha:'', dias:'', motivo:'' });
     await fetchAll();
   }
 
@@ -128,11 +132,20 @@ export default function CompensatoriosPage() {
 
       <form onSubmit={handleSubmitUso} style={styles.form}>
         <span style={styles.formLabel}>Solicitar uso:</span>
+        {verTodo && (
+          <select value={formUso.usuario_id} onChange={e => setFormUso(f => ({ ...f, usuario_id: e.target.value }))} required style={styles.input}>
+            <option value="">Empleado...</option>
+            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+          </select>
+        )}
         <input type="date" value={formUso.fecha} onChange={e => setFormUso(f => ({ ...f, fecha: e.target.value }))} required style={styles.input} />
         <input type="number" step="0.5" min="0" placeholder="Días" value={formUso.dias} onChange={e => setFormUso(f => ({ ...f, dias: e.target.value }))} required style={styles.input} />
         <input type="text" placeholder="Motivo (opcional)" value={formUso.motivo} onChange={e => setFormUso(f => ({ ...f, motivo: e.target.value }))} style={{ ...styles.input, flex:1 }} />
         <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Solicitar'}</button>
       </form>
+      {verTodo && formUso.usuario_id && (
+        <p style={styles.hint}>Saldo de {usuarios.find(u => u.id === formUso.usuario_id)?.nombre || 'esta persona'}: {saldos.find(s => s.usuario_id === formUso.usuario_id)?.saldo_dias ?? 0} días.</p>
+      )}
 
       {puedeGenerar && (
         <form onSubmit={handleSubmitGeneracion} style={styles.form}>
@@ -198,6 +211,7 @@ const styles = {
   title: { margin:0, fontSize:26, color:'#1a1a2e', fontWeight:700 },
   subtitle: { margin:'4px 0 0', fontSize:14, color:'#64748b' },
   error: { color:'#c0392b', fontSize:13, marginBottom:12 },
+  hint: { fontSize:12, color:'#94a3b8', marginTop:-8, marginBottom:16 },
   form: { display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' },
   formLabel: { fontSize:13, fontWeight:600, color:'#475569' },
   input: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14 },
