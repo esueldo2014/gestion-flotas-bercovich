@@ -51,11 +51,22 @@ export default function CierreHHEEPage() {
   const totalHoras50  = filas.reduce((s,f) => s + f.horas50, 0);
   const totalHoras100 = filas.reduce((s,f) => s + f.horas100, 0);
 
+  // agrupar por categoría
+  const porCategoria = {};
+  registros.forEach(r => {
+    const key = r.categoria || 'Sin categoría';
+    porCategoria[key] = (porCategoria[key] ?? 0) + Number(r.horas);
+  });
+  const filasCategoria = Object.entries(porCategoria).sort((a,b) => b[1]-a[1]);
+
   function descargarExcel() {
     const filasCsv = [
       ['Empleado', 'Horas 50%', 'Horas 100%', 'Total horas'],
       ...filas.map(f => [f.nombre, f.horas50, f.horas100, f.horas50 + f.horas100]),
       ['TOTAL', totalHoras50, totalHoras100, totalHoras50 + totalHoras100],
+      [],
+      ['Categoría', 'Horas'],
+      ...filasCategoria.map(([cat, hs]) => [cat, hs]),
     ];
     const csv = filasCsv.map(fila => fila.map(c => `"${c}"`).join(';')).join('\r\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -124,6 +135,23 @@ export default function CierreHHEEPage() {
           </div>
 
           <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Horas por categoría</h3>
+            <div className="table-scroll">
+              <table style={styles.table}>
+                <thead><tr><th style={styles.th}>Categoría</th><th style={styles.th}>Horas</th></tr></thead>
+                <tbody>
+                  {filasCategoria.map(([cat, hs]) => (
+                    <tr key={cat} style={styles.tr}>
+                      <td style={{ ...styles.td, fontWeight:700 }}>{cat}</td>
+                      <td style={styles.td}>{hs}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={styles.section}>
             <h3 style={styles.sectionTitle}>Detalle del mes ({registros.length} registros)</h3>
             <div className="table-scroll">
               <table style={styles.table}>
@@ -132,6 +160,7 @@ export default function CierreHHEEPage() {
                     <th style={styles.th}>Empleado</th>
                     <th style={styles.th}>Fecha</th>
                     <th style={styles.th}>Tipo</th>
+                    <th style={styles.th}>Categoría</th>
                     <th style={styles.th}>Horas</th>
                     <th style={styles.th}>Motivo</th>
                   </tr>
@@ -142,6 +171,7 @@ export default function CierreHHEEPage() {
                       <td style={styles.td}>{r.usuarios_roles?.nombre || r.usuarios_roles?.email}</td>
                       <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
                       <td style={styles.td}>{r.tipo}</td>
+                      <td style={styles.td}>{r.categoria || '—'}</td>
                       <td style={styles.td}>{r.horas}</td>
                       <td style={styles.td}>{r.motivo || '—'}</td>
                     </tr>

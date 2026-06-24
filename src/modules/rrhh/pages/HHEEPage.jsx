@@ -8,6 +8,11 @@ const ESTADO_COLORS = {
   'rechazada': { bg:'#fee2e2', text:'#991b1b' },
 };
 
+const CATEGORIAS = [
+  'PRE INVENTARIO', 'INVENTARIO', 'ATENCION CLIENTES', 'DESCARGA PROVEEDORES',
+  'PREPARACION PHR', 'COBERTURA VACACIONES', 'TAREAS DE MANTENIMIENTO', 'OTROS',
+];
+
 export default function HHEEPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
@@ -17,10 +22,11 @@ export default function HHEEPage() {
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [form, setForm] = useState({ usuario_id:'', fecha:'', tipo:'50%', horas:'', motivo:'' });
+  const [form, setForm] = useState({ usuario_id:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
+  const [filterCategoria, setFilterCategoria] = useState('');
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -64,17 +70,19 @@ export default function HHEEPage() {
     setError(null);
     if (!form.fecha || !form.horas) return;
     if (verTodo && !form.usuario_id) { setError('Elegí para qué empleado es esta hora extra.'); return; }
+    if (!form.categoria) { setError('Elegí una categoría.'); return; }
     setSaving(true);
     const { error: err } = await supabase.from('hhee').insert({
       usuario_id: verTodo ? form.usuario_id : role.id,
       fecha: form.fecha,
       tipo: form.tipo,
+      categoria: form.categoria,
       horas: parseFloat(form.horas),
       motivo: form.motivo || null,
     });
     setSaving(false);
     if (err) { setError(err.message); return; }
-    setForm({ usuario_id:'', fecha:'', tipo:'50%', horas:'', motivo:'' });
+    setForm({ usuario_id:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
     await fetchAll();
   }
 
@@ -87,7 +95,9 @@ export default function HHEEPage() {
     await fetchAll();
   }
 
-  const filtered = registros.filter(r => !filterEstado || r.estado === filterEstado);
+  const filtered = registros
+    .filter(r => !filterEstado || r.estado === filterEstado)
+    .filter(r => !filterCategoria || r.categoria === filterCategoria);
 
   return (
     <div style={styles.page} className="page-padding">
@@ -110,6 +120,10 @@ export default function HHEEPage() {
           <option value="50%">50%</option>
           <option value="100%">100%</option>
         </select>
+        <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} required style={styles.input}>
+          <option value="">Categoría...</option>
+          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
         <input type="number" step="0.5" min="0" placeholder="Horas" value={form.horas} onChange={e => setForm(f => ({ ...f, horas: e.target.value }))} required style={styles.input} />
         <input type="text" placeholder="Motivo (opcional)" value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} style={{ ...styles.input, flex:1 }} />
         <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Cargar'}</button>
@@ -123,6 +137,10 @@ export default function HHEEPage() {
           <option value="aprobada">Aprobada</option>
           <option value="rechazada">Rechazada</option>
         </select>
+        <select value={filterCategoria} onChange={e => setFilterCategoria(e.target.value)} style={styles.select}>
+          <option value="">Todas las categorías</option>
+          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
         <span style={styles.count}>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
@@ -133,7 +151,7 @@ export default function HHEEPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo ? ['Empleado'] : []), 'Fecha','Tipo','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo ? ['Empleado'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -146,6 +164,7 @@ export default function HHEEPage() {
                     {verTodo && <td style={styles.td}>{r.usuarios_roles?.nombre || r.usuarios_roles?.email}</td>}
                     <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{r.tipo || '—'}</td>
+                    <td style={styles.td}>{r.categoria || '—'}</td>
                     <td style={styles.td}>{r.horas}</td>
                     <td style={styles.td}>{r.motivo || '—'}</td>
                     <td style={styles.td}><span style={{ ...styles.badge, background: col.bg, color: col.text }}>{r.estado}</span></td>
