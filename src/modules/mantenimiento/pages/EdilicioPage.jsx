@@ -29,7 +29,8 @@ export default function EdilicioPage() {
   };
 
   const [solicitudes, setSolicitudes] = useState([]);
-  const [depositos, setDepositos]     = useState([]);
+  const [depositos, setDepositos]     = useState([]); // sucursales
+  const [rubros, setRubros]           = useState([]); // depositos por rubro
   const [loading, setLoading]         = useState(true);
   const [showForm, setShowForm]       = useState(false);
   const [editing, setEditing]         = useState(null);
@@ -38,12 +39,14 @@ export default function EdilicioPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: sol }, { data: dep }] = await Promise.all([
-      supabase.from('edilicios_solicitudes').select('*, depositos(code, name)').order('fecha_reporte', { ascending: false }),
-      supabase.from('depositos').select('*').order('code'),
+    const [{ data: sol }, { data: dep }, { data: rub }] = await Promise.all([
+      supabase.from('edilicios_solicitudes').select('*, sucursales(code, nombre), depositos(nombre)').order('fecha_reporte', { ascending: false }),
+      supabase.from('sucursales').select('*').order('code'),
+      supabase.from('depositos').select('*').order('nombre'),
     ]);
     setSolicitudes(sol ?? []);
     setDepositos(dep ?? []);
+    setRubros(rub ?? []);
     setLoading(false);
   }, []);
 
@@ -53,6 +56,7 @@ export default function EdilicioPage() {
     const payload = {
       provincia: form.provincia,
       deposito_id: form.deposito_id ? parseInt(form.deposito_id) : null,
+      rubro_deposito_id: form.rubro_deposito_id ? parseInt(form.rubro_deposito_id) : null,
       titulo: form.titulo,
       descripcion: form.descripcion,
       categoria: form.categoria || null,
@@ -125,7 +129,7 @@ export default function EdilicioPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Estado','Prioridad','Título','Depósito','Categoría','Reportado','Fecha', ...(verCostos ? ['Monto aprobado'] : []), 'Acciones'].map(h => (
+                {['Estado','Prioridad','Título','Sucursal','Depósito','Categoría','Reportado','Fecha', ...(verCostos ? ['Monto aprobado'] : []), 'Acciones'].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -144,7 +148,8 @@ export default function EdilicioPage() {
                     <td style={{ ...styles.td, maxWidth:220 }}>
                       <div style={styles.tituloText}>{s.titulo}</div>
                     </td>
-                    <td style={styles.td}>{s.depositos?.code ?? '—'}</td>
+                    <td style={styles.td}>{s.sucursales?.code ?? '—'}</td>
+                    <td style={styles.td}>{s.depositos?.nombre ?? '—'}</td>
                     <td style={styles.td}>{s.categoria || '—'}</td>
                     <td style={styles.td}>{s.reportado_por || '—'}</td>
                     <td style={styles.td}>{new Date(s.fecha_reporte).toLocaleDateString('es-AR')}</td>
@@ -168,6 +173,7 @@ export default function EdilicioPage() {
       {showForm && (
         <EdilicioForm
           depositos={depositos}
+          rubros={rubros}
           initial={editing}
           permisos={permisos}
           onSave={handleSave}

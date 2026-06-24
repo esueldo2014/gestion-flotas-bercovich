@@ -16,24 +16,24 @@ export default function MachineList({ machines, depositos, filterDeposito, onFil
       <div style={styles.toolbar}>
         <div style={styles.count}>{filtered.length} máquina{filtered.length !== 1 ? 's' : ''}</div>
         <div style={styles.filterWrap}>
-          <label style={styles.filterLabel}>Filtrar por depósito:</label>
+          <label style={styles.filterLabel}>Filtrar por sucursal:</label>
           <select value={filterDeposito} onChange={e => onFilterChange(e.target.value)} style={styles.select}>
-            <option value="">Todos los depósitos</option>
+            <option value="">Todas las sucursales</option>
             {depositos.map(d => (
-              <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
+              <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>
             ))}
           </select>
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div style={styles.empty}>No hay máquinas registradas{filterDeposito ? ' en este depósito' : ''}.</div>
+        <div style={styles.empty}>No hay máquinas registradas{filterDeposito ? ' en esta sucursal' : ''}.</div>
       ) : (
         <div style={styles.tableWrap}>
           <table style={styles.table}>
             <thead>
               <tr>
-                {['N° interno','Tipo','Marca / Modelo','Depósito','Estado','Capacidad / Patente','Acciones'].map(h => (
+                {['N° interno','Tipo','Marca / Modelo','Sucursal','Estado','Capacidad / Patente','Acciones'].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>

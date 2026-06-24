@@ -11,7 +11,7 @@ export default function EquipoPage() {
     setLoading(true);
     const [{ data: us }, { data: dep }] = await Promise.all([
       supabase.from('usuarios_roles').select('*').order('nombre'),
-      supabase.from('depositos').select('*').order('code'),
+      supabase.from('sucursales').select('*').order('code'),
     ]);
     setUsuarios(us ?? []);
     setDepositos(dep ?? []);
@@ -31,7 +31,7 @@ export default function EquipoPage() {
     <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>Equipo</h1>
-        <p style={styles.subtitle}>Asigná el depósito de cada persona, para que los encargados aprueben solo a su gente.</p>
+        <p style={styles.subtitle}>Asigná la sucursal de cada persona, para que los encargados aprueben solo a su gente.</p>
       </div>
 
       {loading ? <p style={styles.info}>Cargando...</p> : (
@@ -39,7 +39,7 @@ export default function EquipoPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Nombre','Email','Rol','Depósito'].map(h => <th key={h} style={styles.th}>{h}</th>)}
+                {['Nombre','Email','Rol','Sucursal'].map(h => <th key={h} style={styles.th}>{h}</th>)}
               </tr>
             </thead>
             <tbody>

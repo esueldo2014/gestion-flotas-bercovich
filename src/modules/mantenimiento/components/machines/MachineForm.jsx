@@ -71,12 +71,12 @@ export default function MachineForm({ depositos, initial, onSave, onCancel }) {
           <Field label="N° de chasis" name="numero_chasis" value={form.numero_chasis} onChange={handleChange} />
 
           <div style={styles.field}>
-            <label style={styles.label}>Depósito *</label>
+            <label style={styles.label}>Sucursal *</label>
             <select name="deposito_id" value={form.deposito_id} onChange={handleChange}
               style={styles.input} required>
               <option value="">Seleccionar...</option>
               {depositos.map(d => (
-                <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
+                <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>
               ))}
             </select>
           </div>

@@ -15,7 +15,7 @@ export default function InformePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [{ data: maq }, { data: corr }, { data: plan }, { data: ejec }, { data: lect }] = await Promise.all([
-      supabase.from('maquinas').select('id, numero_interno, estado, deposito_id, hora_inicial, depositos(code)'),
+      supabase.from('maquinas').select('id, numero_interno, estado, deposito_id, hora_inicial, sucursales(code)'),
       supabase.from('correctivos').select('id, estado, costo_total, maquina_id, fecha_reporte, fecha_cierre, descripcion'),
       supabase.from('plan_preventivo').select('id, maquina_id, frecuencia_horas, frecuencia_dias'),
       supabase.from('preventivos_ejecutados').select('id, plan_id, maquina_id, fecha'),
@@ -101,9 +101,9 @@ export default function InformePage() {
 
           {Object.keys(info.horasPorDep).length > 0 && (
             <div style={styles.subsection}>
-              <h3 style={styles.subTitle}>Horas de uso por depósito</h3>
+              <h3 style={styles.subTitle}>Horas de uso por sucursal</h3>
               <div className="table-scroll"><table style={styles.table}>
-                <thead><tr><th style={styles.th}>Depósito</th><th style={styles.th}>Horas usadas</th></tr></thead>
+                <thead><tr><th style={styles.th}>Sucursal</th><th style={styles.th}>Horas usadas</th></tr></thead>
                 <tbody>
                   {Object.entries(info.horasPorDep).sort((a,b)=>b[1]-a[1]).map(([dep, hs]) => (
                     <tr key={dep} style={styles.tr}>
@@ -209,7 +209,7 @@ function calcular(maquinas, correctivosMes, planItems, ejecutados, lecturas, mes
       porMes[key] = { valor: Number(l.valor), anio: d.getFullYear(), mesNum: d.getMonth()+1 };
     });
     const keys = Object.keys(porMes).sort();
-    const depCode = m.depositos?.code ?? 'N/A';
+    const depCode = m.sucursales?.code ?? 'N/A';
     keys.forEach((key, i) => {
       const actual = porMes[key];
       if (actual.anio !== anio || actual.mesNum !== mes) return;

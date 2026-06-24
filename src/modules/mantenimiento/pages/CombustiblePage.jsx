@@ -23,7 +23,7 @@ export default function CombustiblePage() {
     setLoading(true);
     const [{ data: maq }, { data: dep }] = await Promise.all([
       supabase.from('maquinas').select('*').order('numero_interno'),
-      supabase.from('depositos').select('*').order('code'),
+      supabase.from('sucursales').select('*').order('code'),
     ]);
     setMachines(maq ?? []);
     setDepositos(dep ?? []);
@@ -108,8 +108,8 @@ export default function CombustiblePage() {
       <div style={styles.layout} className="layout-sidebar">
         <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
-            <option value="">Todos los depósitos</option>
-            {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+            <option value="">Todas las sucursales</option>
+            {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
           </select>
           {loading ? <p style={styles.info}>Cargando...</p> : (
             <ul style={styles.list}>

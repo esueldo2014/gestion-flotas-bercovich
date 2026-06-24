@@ -10,7 +10,21 @@
       "Bash(node -e ' *)",
       "Bash(python scripts/office/validate.py Instructivo_Gestion_de_Flotas.docx)",
       "Bash(python \"C:\\\\Users\\\\User\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\a10968df-88fb-4170-badf-927cd3eb3dc9\\\\ca10778d-54c4-4814-946b-945ac5f3c687\\\\skills\\\\docx\\\\scripts\\\\office\\\\validate.py\" \"C:\\\\Users\\\\User\\\\Downloads\\\\Instructivo_Gestion_de_Flotas.docx\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(xargs grep -l \"supabase\\\\|usuarios_roles\")",
+      "Bash(cat .env)",
+      "Bash(ls -la .env*)",
+      "Bash(which supabase *)",
+      "Bash(cat src/lib/supabaseClient.js)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(grep -c \"RLS policies\" /dev/null)",
+      "Bash(grep -n \"RLS\" /dev/null)",
+      "Bash(git rm *)",
+      "Bash(pip install *)",
+      "Bash(python -m pip install pandas openpyxl -q)"
     ]
   }
 }

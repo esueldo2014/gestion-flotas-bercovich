@@ -31,7 +31,7 @@ export default function CorrectivosPage() {
     const [{ data: corr }, { data: maq }, { data: dep }] = await Promise.all([
       supabase.from('correctivos').select('*, maquinas(numero_interno, marca, modelo, tipo)').order('fecha_reporte', { ascending: false }),
       supabase.from('maquinas').select('*').order('numero_interno'),
-      supabase.from('depositos').select('*').order('code'),
+      supabase.from('sucursales').select('*').order('code'),
     ]);
     setCorrectivos(corr ?? []);
     setMachines(maq ?? []);

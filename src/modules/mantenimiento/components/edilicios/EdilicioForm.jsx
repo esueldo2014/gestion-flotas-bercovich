@@ -7,11 +7,11 @@ const PRIORIDADES = ['Baja','Media','Alta','Urgente'];
 const ESTADOS_FLOW = ['Detectado','En cotización','Pendiente de aprobación','Aprobado','Rechazado','En ejecución','Cerrado'];
 
 const empty = {
-  provincia: 'T', deposito_id: '', titulo: '', descripcion: '', categoria: '',
+  provincia: 'T', deposito_id: '', rubro_deposito_id: '', titulo: '', descripcion: '', categoria: '',
   prioridad: 'Media', estado: 'Detectado', reportado_por: '', observaciones_gerencia: '',
 };
 
-export default function EdilicioForm({ depositos, initial, permisos, onSave, onCancel }) {
+export default function EdilicioForm({ depositos, rubros, initial, permisos, onSave, onCancel }) {
   const [form, setForm] = useState({ ...empty, ...initial });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -19,6 +19,12 @@ export default function EdilicioForm({ depositos, initial, permisos, onSave, onC
   useEffect(() => { setForm({ ...empty, ...initial }); }, [initial]);
 
   function handle(e) { setForm(f => ({ ...f, [e.target.name]: e.target.value })); }
+
+  function handleSucursal(e) {
+    setForm(f => ({ ...f, deposito_id: e.target.value, rubro_deposito_id: '' }));
+  }
+
+  const rubrosDeLaSucursal = (rubros ?? []).filter(r => String(r.sucursal_id) === String(form.deposito_id));
 
   async function submit(e) {
     e.preventDefault(); setError(null); setSaving(true);
@@ -44,10 +50,19 @@ export default function EdilicioForm({ depositos, initial, permisos, onSave, onC
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>Depósito / Sede</label>
-            <select name="deposito_id" value={form.deposito_id} onChange={handle} style={styles.input} disabled={soloLectura}>
+            <label style={styles.label}>Sucursal</label>
+            <select name="deposito_id" value={form.deposito_id} onChange={handleSucursal} style={styles.input} disabled={soloLectura}>
               <option value="">Seleccionar...</option>
-              {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+              {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
+            </select>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>Depósito (rubro)</label>
+            <select name="rubro_deposito_id" value={form.rubro_deposito_id} onChange={handle} style={styles.input}
+              disabled={soloLectura || !form.deposito_id}>
+              <option value="">{form.deposito_id ? 'Seleccionar...' : 'Elegí primero una sucursal'}</option>
+              {rubrosDeLaSucursal.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
             </select>
           </div>
 

@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [{ data: maq }, { data: corr }, { data: plan }, { data: ejec }, { data: lect }] = await Promise.all([
-      supabase.from('maquinas').select('id, numero_interno, estado, deposito_id, hora_inicial, depositos(code)'),
+      supabase.from('maquinas').select('id, numero_interno, estado, deposito_id, hora_inicial, sucursales(code)'),
       supabase.from('correctivos').select('id, estado, costo_total, maquina_id, fecha_reporte'),
       supabase.from('plan_preventivo').select('id, maquina_id, frecuencia_horas, frecuencia_dias'),
       supabase.from('preventivos_ejecutados').select('id, plan_id, maquina_id, fecha, horometro_valor'),
@@ -91,7 +91,7 @@ function calcularStats(maquinas, correctivos, planItems, ejecutados, lecturas) {
     .sort((a,b) => b[1]-a[1]).slice(0,5)
     .map(([id, count]) => {
       const m = maquinas.find(m => m.id === id);
-      return { id, count, numero: m?.numero_interno ?? '?', deposito: m?.depositos?.code ?? '?' };
+      return { id, count, numero: m?.numero_interno ?? '?', deposito: m?.sucursales?.code ?? '?' };
     });
 
   const ejecutadosSet = new Set(ejecutados.map(e => e.plan_id));
@@ -100,7 +100,7 @@ function calcularStats(maquinas, correctivos, planItems, ejecutados, lecturas) {
 
   const depMap = {};
   maquinas.forEach(m => {
-    const code = m.depositos?.code ?? 'N/A';
+    const code = m.sucursales?.code ?? 'N/A';
     if (!depMap[code]) depMap[code] = { total:0, operativas:0 };
     depMap[code].total++;
     if (m.estado === 'Operativo') depMap[code].operativas++;
@@ -123,7 +123,7 @@ function calcularStats(maquinas, correctivos, planItems, ejecutados, lecturas) {
     });
 
     const mesesKeys = Object.keys(porMes).sort();
-    const depCode = m.depositos?.code ?? 'N/A';
+    const depCode = m.sucursales?.code ?? 'N/A';
 
     mesesKeys.forEach((key, i) => {
       const actual = porMes[key];
@@ -171,7 +171,7 @@ function DashboardContent({ stats }) {
       {Object.keys(stats.horasPorDep).length > 0 && (
         <div style={{ ...styles.section, marginBottom:24 }}>
           <h2 style={styles.sectionTitle}>
-            Horas de uso por depósito — {MESES[stats.mesActual-1]} {stats.anioActual}
+            Horas de uso por sucursal — {MESES[stats.mesActual-1]} {stats.anioActual}
           </h2>
           <div style={styles.horasGrid}>
             {Object.entries(stats.horasPorDep).sort((a,b) => b[1]-a[1]).map(([dep, hs]) => (
@@ -189,11 +189,11 @@ function DashboardContent({ stats }) {
 
       <div style={styles.bottomGrid} className="grid-2">
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Disponibilidad por depósito</h2>
+          <h2 style={styles.sectionTitle}>Disponibilidad por sucursal</h2>
           <div className="table-scroll">
           <table style={styles.table}>
             <thead><tr>
-              <th style={styles.th}>Depósito</th>
+              <th style={styles.th}>Sucursal</th>
               <th style={styles.th}>Total</th>
               <th style={styles.th}>Operativas</th>
               <th style={styles.th}>Disponibilidad</th>
@@ -230,7 +230,7 @@ function DashboardContent({ stats }) {
               <thead><tr>
                 <th style={styles.th}>Puesto</th>
                 <th style={styles.th}>Máquina</th>
-                <th style={styles.th}>Depósito</th>
+                <th style={styles.th}>Sucursal</th>
                 <th style={styles.th}>N° de OTs</th>
               </tr></thead>
               <tbody>

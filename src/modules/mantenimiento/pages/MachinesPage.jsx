@@ -23,7 +23,7 @@ export default function MachinesPage() {
     setError(null);
     const [{ data: maq, error: e1 }, { data: dep, error: e2 }] = await Promise.all([
       supabase.from('maquinas').select('*').order('numero_interno'),
-      supabase.from('depositos').select('*').order('code'),
+      supabase.from('sucursales').select('*').order('code'),
     ]);
     if (e1 || e2) { setError((e1 || e2).message); }
     else { setMachines(maq); setDepositos(dep); }
