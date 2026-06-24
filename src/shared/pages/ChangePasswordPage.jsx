@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 export default function ChangePasswordPage({ user, forced, onDone, onCancel }) {
   const [password, setPassword]   = useState('');
   const [confirm, setConfirm]     = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
 
@@ -50,13 +51,23 @@ export default function ChangePasswordPage({ user, forced, onDone, onCancel }) {
 
         <div style={styles.field}>
           <label style={styles.label}>Nueva contraseña</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            required autoFocus style={styles.input} placeholder="••••••••" />
+          <div style={styles.passwordWrap}>
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+              required autoFocus style={{ ...styles.input, paddingRight: 44 }} placeholder="••••••••" />
+            <button type="button" onClick={() => setShowPassword(s => !s)} style={styles.eyeBtn}>
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
         <div style={styles.field}>
           <label style={styles.label}>Confirmar contraseña</label>
-          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
-            required style={styles.input} placeholder="••••••••" />
+          <div style={styles.passwordWrap}>
+            <input type={showPassword ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)}
+              required style={{ ...styles.input, paddingRight: 44 }} placeholder="••••••••" />
+            <button type="button" onClick={() => setShowPassword(s => !s)} style={styles.eyeBtn}>
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
 
         {error && <p style={styles.error}>{error}</p>}
@@ -81,7 +92,9 @@ const styles = {
   forcedMsg: { margin:'0 0 20px', fontSize:13, color:'#b45309', background:'#fef3c7', padding:'10px 12px', borderRadius:8, fontFamily:'system-ui, sans-serif' },
   field: { display:'flex', flexDirection:'column', gap:4, marginBottom:16 },
   label: { fontSize:13, fontWeight:600, color:'#444', fontFamily:'system-ui, sans-serif' },
-  input: { padding:'10px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14, fontFamily:'system-ui, sans-serif', outline:'none' },
+  input: { padding:'10px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14, fontFamily:'system-ui, sans-serif', outline:'none', width:'100%' },
+  passwordWrap: { position:'relative', display:'flex' },
+  eyeBtn: { position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:16, padding:4 },
   error: { color:'#c0392b', fontSize:13, marginBottom:12, fontFamily:'system-ui, sans-serif' },
   btn: { width:'100%', background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'11px', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'system-ui, sans-serif' },
   cancelBtn: { width:'100%', background:'transparent', color:'#64748b', border:'none', padding:'10px', fontSize:13, cursor:'pointer', marginTop:8, fontFamily:'system-ui, sans-serif' },
