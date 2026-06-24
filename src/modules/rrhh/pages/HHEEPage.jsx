@@ -28,7 +28,7 @@ export default function HHEEPage() {
     if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
 
     const [hheeRes, usRes] = await Promise.all([
-      supabase.from('hhee').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false }),
+      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email)').order('fecha', { ascending:false }),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
     ]);
 

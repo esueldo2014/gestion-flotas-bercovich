@@ -31,16 +31,21 @@ export default function VacacionesPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles(nombre, email)').order('fecha_desde', { ascending:false });
+    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email)').order('fecha_desde', { ascending:false });
     if (!verTodo) solQuery = solQuery.eq('usuario_id', role.id);
-    const [{ data: sol }, { data: asig }, { data: us }] = await Promise.all([
+    const [solRes, asigRes, usRes] = await Promise.all([
       solQuery,
       supabase.from('vacaciones_asignacion').select('*').eq('anio', anioActual),
       verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
     ]);
-    setSolicitudes(sol ?? []);
-    setAsignaciones(asig ?? []);
-    setUsuarios(us ?? []);
+    if (solRes.error || asigRes.error || usRes.error) {
+      setError((solRes.error || asigRes.error || usRes.error).message);
+    } else {
+      setError(null);
+    }
+    setSolicitudes(solRes.data ?? []);
+    setAsignaciones(asigRes.data ?? []);
+    setUsuarios(usRes.data ?? []);
     setLoading(false);
   }, [verTodo, role?.id, anioActual]);
 

@@ -30,7 +30,7 @@ export default function CompensatoriosPage() {
     if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
 
     const [movRes, salRes, usRes] = await Promise.all([
-      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles(nombre, email)').order('fecha', { ascending:false }),
+      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles!usuario_id(nombre, email)').order('fecha', { ascending:false }),
       supabase.from('dias_compensatorios_saldo').select('*'),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
     ]);
