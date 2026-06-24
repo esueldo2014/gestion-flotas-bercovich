@@ -17,8 +17,9 @@ export default function HHEEPage() {
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [form, setForm] = useState({ fecha:'', horas:'', motivo:'' });
+  const [form, setForm] = useState({ usuario_id:'', fecha:'', tipo:'50%', horas:'', motivo:'' });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
 
   const fetchAll = useCallback(async () => {
@@ -43,18 +44,28 @@ export default function HHEEPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  function handleFechaChange(fecha) {
+    const dia = fecha ? new Date(fecha + 'T00:00:00').getDay() : null; // 0=domingo, 6=sabado
+    const tipoSugerido = dia === 0 ? '100%' : '50%';
+    setForm(f => ({ ...f, fecha, tipo: tipoSugerido }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    setError(null);
     if (!form.fecha || !form.horas) return;
+    if (verTodo && !form.usuario_id) { setError('Elegí para qué empleado es esta hora extra.'); return; }
     setSaving(true);
-    await supabase.from('hhee').insert({
-      usuario_id: role.id,
+    const { error: err } = await supabase.from('hhee').insert({
+      usuario_id: verTodo ? form.usuario_id : role.id,
       fecha: form.fecha,
+      tipo: form.tipo,
       horas: parseFloat(form.horas),
       motivo: form.motivo || null,
     });
     setSaving(false);
-    setForm({ fecha:'', horas:'', motivo:'' });
+    if (err) { setError(err.message); return; }
+    setForm({ usuario_id:'', fecha:'', tipo:'50%', horas:'', motivo:'' });
     await fetchAll();
   }
 
@@ -76,12 +87,25 @@ export default function HHEEPage() {
         <p style={styles.subtitle}>{verTodo ? 'Todas las solicitudes' : 'Tus horas extra cargadas'}</p>
       </div>
 
+      {error && <p style={styles.error}>{error}</p>}
+
       <form onSubmit={handleSubmit} style={styles.form}>
-        <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} required style={styles.input} />
+        {verTodo && (
+          <select value={form.usuario_id} onChange={e => setForm(f => ({ ...f, usuario_id: e.target.value }))} required style={styles.input}>
+            <option value="">Empleado...</option>
+            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+          </select>
+        )}
+        <input type="date" value={form.fecha} onChange={e => handleFechaChange(e.target.value)} required style={styles.input} />
+        <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} style={styles.input}>
+          <option value="50%">50%</option>
+          <option value="100%">100%</option>
+        </select>
         <input type="number" step="0.5" min="0" placeholder="Horas" value={form.horas} onChange={e => setForm(f => ({ ...f, horas: e.target.value }))} required style={styles.input} />
         <input type="text" placeholder="Motivo (opcional)" value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} style={{ ...styles.input, flex:1 }} />
         <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Cargar'}</button>
       </form>
+      <p style={styles.hint}>50%: hasta el sábado 13hs. 100%: desde el sábado 13hs hasta el domingo 24hs. El sistema sugiere el tipo según la fecha — revisalo si cargás un sábado.</p>
 
       <div style={styles.filters}>
         <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={styles.select}>
@@ -100,7 +124,7 @@ export default function HHEEPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo ? ['Empleado'] : []), 'Fecha','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo ? ['Empleado'] : []), 'Fecha','Tipo','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -112,6 +136,7 @@ export default function HHEEPage() {
                   <tr key={r.id} style={styles.tr}>
                     {verTodo && <td style={styles.td}>{r.usuarios_roles?.nombre || r.usuarios_roles?.email}</td>}
                     <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
+                    <td style={styles.td}>{r.tipo || '—'}</td>
                     <td style={styles.td}>{r.horas}</td>
                     <td style={styles.td}>{r.motivo || '—'}</td>
                     <td style={styles.td}><span style={{ ...styles.badge, background: col.bg, color: col.text }}>{r.estado}</span></td>
@@ -141,7 +166,9 @@ const styles = {
   header: { marginBottom:20 },
   title: { margin:0, fontSize:26, color:'#1a1a2e', fontWeight:700 },
   subtitle: { margin:'4px 0 0', fontSize:14, color:'#64748b' },
-  form: { display:'flex', gap:10, marginBottom:20, flexWrap:'wrap' },
+  form: { display:'flex', gap:10, marginBottom:8, flexWrap:'wrap' },
+  hint: { fontSize:12, color:'#94a3b8', marginBottom:20 },
+  error: { color:'#c0392b', fontSize:13, marginBottom:12 },
   input: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14 },
   btnNew: { background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'10px 20px', fontSize:14, fontWeight:600, cursor:'pointer' },
   filters: { display:'flex', gap:12, alignItems:'center', marginBottom:16 },

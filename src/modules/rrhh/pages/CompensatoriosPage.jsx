@@ -60,10 +60,11 @@ export default function CompensatoriosPage() {
       return;
     }
     setSaving(true);
-    await supabase.from('dias_compensatorios_movimientos').insert({
+    const { error: err } = await supabase.from('dias_compensatorios_movimientos').insert({
       usuario_id: role.id, tipo:'uso', fecha: formUso.fecha, dias, motivo: formUso.motivo || null,
     });
     setSaving(false);
+    if (err) { setError(err.message); return; }
     setFormUso({ fecha:'', dias:'', motivo:'' });
     await fetchAll();
   }
@@ -74,10 +75,11 @@ export default function CompensatoriosPage() {
     const dias = parseFloat(formGen.dias);
     if (!formGen.usuario_id || !formGen.fecha || !dias) return;
     setSaving(true);
-    await supabase.from('dias_compensatorios_movimientos').insert({
+    const { error: err } = await supabase.from('dias_compensatorios_movimientos').insert({
       usuario_id: formGen.usuario_id, tipo:'generado', fecha: formGen.fecha, dias, motivo: formGen.motivo || null,
     });
     setSaving(false);
+    if (err) { setError(err.message); return; }
     setFormGen({ usuario_id:'', fecha:'', dias:'', motivo:'' });
     await fetchAll();
   }
