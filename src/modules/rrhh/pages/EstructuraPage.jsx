@@ -10,13 +10,17 @@ export default function EstructuraPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: sucursales }, { data: depositos }, { data: usuarios }, { data: personal }] = await Promise.all([
+    const [{ data: sucursales }, { data: depositos }, { data: usuarios }, { data: personal }, { data: asignaciones }] = await Promise.all([
       supabase.from('sucursales').select('*').order('code'),
       supabase.from('depositos').select('*').order('nombre'),
-      supabase.from('usuarios_roles').select('id, nombre, email, rol, deposito_id, rubro_deposito_id'),
+      supabase.from('usuarios_roles').select('id, nombre, email, rol, deposito_id'),
       supabase.from('personal').select('id, nombre, deposito_id, rubro_deposito_id').eq('activo', true),
+      supabase.from('usuarios_depositos').select('*'),
     ]);
-    setData({ sucursales: sucursales ?? [], depositos: depositos ?? [], usuarios: usuarios ?? [], personal: personal ?? [] });
+    setData({
+      sucursales: sucursales ?? [], depositos: depositos ?? [],
+      usuarios: usuarios ?? [], personal: personal ?? [], asignaciones: asignaciones ?? [],
+    });
     setLoading(false);
   }, []);
 
@@ -24,8 +28,15 @@ export default function EstructuraPage() {
 
   if (loading || !data) return <div style={styles.page} className="page-padding"><p style={styles.info}>Cargando...</p></div>;
 
-  const { sucursales, depositos, usuarios, personal } = data;
+  const { sucursales, depositos, usuarios, personal, asignaciones } = data;
   const sucursalesFiltradas = filterSucursal ? sucursales.filter(s => String(s.id) === filterSucursal) : sucursales;
+
+  function jefesDe(depId) {
+    return asignaciones
+      .filter(a => a.deposito_id === depId)
+      .map(a => usuarios.find(u => u.id === a.usuario_id))
+      .filter(Boolean);
+  }
 
   // totales por provincia
   const totalesPorProvincia = {};
@@ -42,14 +53,15 @@ export default function EstructuraPage() {
     sucursales.forEach(suc => {
       const prov = PROVINCIA_LABEL[suc.provincia] || 'Sin provincia';
       const depsDeSucursal = depositos.filter(d => d.sucursal_id === suc.id);
-      const usuariosSinDeposito = usuarios.filter(u => u.deposito_id === suc.id && !u.rubro_deposito_id);
+      const idsAsignados = new Set(asignaciones.map(a => a.usuario_id));
+      const usuariosSinDeposito = usuarios.filter(u => u.deposito_id === suc.id && !idsAsignados.has(u.id));
 
       usuariosSinDeposito.forEach(u => {
         filas.push([prov, `${suc.code} — ${suc.nombre}`, '—', 'Jefe', u.nombre || '', u.email || '', u.rol]);
       });
 
       depsDeSucursal.forEach(dep => {
-        const jefes = usuarios.filter(u => u.rubro_deposito_id === dep.id);
+        const jefes = jefesDe(dep.id);
         const gente = personal.filter(p => p.rubro_deposito_id === dep.id);
         if (jefes.length === 0 && gente.length === 0) return;
 
@@ -102,7 +114,8 @@ export default function EstructuraPage() {
 
       {sucursalesFiltradas.map(suc => {
         const depsDeSucursal = depositos.filter(d => d.sucursal_id === suc.id);
-        const usuariosSinDeposito = usuarios.filter(u => u.deposito_id === suc.id && !u.rubro_deposito_id);
+        const idsAsignados = new Set(asignaciones.map(a => a.usuario_id));
+        const usuariosSinDeposito = usuarios.filter(u => u.deposito_id === suc.id && !idsAsignados.has(u.id));
         if (depsDeSucursal.length === 0 && usuariosSinDeposito.length === 0) return null;
 
         return (
@@ -119,7 +132,7 @@ export default function EstructuraPage() {
 
             <div style={styles.depGrid}>
               {depsDeSucursal.map(dep => {
-                const jefes = usuarios.filter(u => u.rubro_deposito_id === dep.id);
+                const jefes = jefesDe(dep.id);
                 const gente = personal.filter(p => p.rubro_deposito_id === dep.id);
                 if (jefes.length === 0 && gente.length === 0) return null;
 

@@ -35,8 +35,14 @@ export default function VacacionesPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
 
+    let depositosIds = null;
+    if (esEM && !verTodo) {
+      const { data: asig } = await supabase.from('usuarios_depositos').select('deposito_id').eq('usuario_id', role.id);
+      depositosIds = (asig ?? []).map(a => a.deposito_id);
+    }
+
     let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
-    if (esEM && !verTodo) personalQuery = personalQuery.eq('rubro_deposito_id', role.rubro_deposito_id);
+    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
 
     let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha_desde', { ascending:false });
     if (!verTodo && !esEM) solQuery = solQuery.eq('usuario_id', role.id);

@@ -29,8 +29,14 @@ export default function CompensatoriosPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
 
+    let depositosIds = null;
+    if (esEM && !verTodo) {
+      const { data: asig } = await supabase.from('usuarios_depositos').select('deposito_id').eq('usuario_id', role.id);
+      depositosIds = (asig ?? []).map(a => a.deposito_id);
+    }
+
     let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
-    if (esEM && !verTodo) personalQuery = personalQuery.eq('rubro_deposito_id', role.rubro_deposito_id);
+    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
 
     const [movRes, salRes, usRes, persRes] = await Promise.all([
       supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha', { ascending:false }),
