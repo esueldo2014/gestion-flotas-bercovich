@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../shared/lib/supabaseClient';
 
+const PROVINCIA_LABEL = { T: 'Tucumán', S: 'Santiago del Estero' };
+
 export default function EstructuraPage() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,11 +27,72 @@ export default function EstructuraPage() {
   const { sucursales, depositos, usuarios, personal } = data;
   const sucursalesFiltradas = filterSucursal ? sucursales.filter(s => String(s.id) === filterSucursal) : sucursales;
 
+  // totales por provincia
+  const totalesPorProvincia = {};
+  sucursales.forEach(suc => {
+    const prov = suc.provincia || 'Sin provincia';
+    if (!totalesPorProvincia[prov]) totalesPorProvincia[prov] = { jefes: 0, personal: 0 };
+    totalesPorProvincia[prov].jefes += usuarios.filter(u => u.deposito_id === suc.id).length;
+    totalesPorProvincia[prov].personal += personal.filter(p => p.deposito_id === suc.id).length;
+  });
+
+  function descargarExcel() {
+    const filas = [['Provincia','Sucursal','Depósito','Tipo','Nombre','Email','Rol']];
+
+    sucursales.forEach(suc => {
+      const prov = PROVINCIA_LABEL[suc.provincia] || 'Sin provincia';
+      const depsDeSucursal = depositos.filter(d => d.sucursal_id === suc.id);
+      const usuariosSinDeposito = usuarios.filter(u => u.deposito_id === suc.id && !u.rubro_deposito_id);
+
+      usuariosSinDeposito.forEach(u => {
+        filas.push([prov, `${suc.code} — ${suc.nombre}`, '—', 'Jefe', u.nombre || '', u.email || '', u.rol]);
+      });
+
+      depsDeSucursal.forEach(dep => {
+        const jefes = usuarios.filter(u => u.rubro_deposito_id === dep.id);
+        const gente = personal.filter(p => p.rubro_deposito_id === dep.id);
+        if (jefes.length === 0 && gente.length === 0) return;
+
+        jefes.forEach(j => filas.push([prov, `${suc.code} — ${suc.nombre}`, dep.nombre, 'Jefe', j.nombre || '', j.email || '', j.rol]));
+        gente.forEach(p => filas.push([prov, `${suc.code} — ${suc.nombre}`, dep.nombre, 'Personal', p.nombre, '', '']));
+      });
+    });
+
+    filas.push([]);
+    filas.push(['Totales por provincia']);
+    filas.push(['Provincia', 'Jefes (EM)', 'Personal / Maestranza']);
+    Object.entries(totalesPorProvincia).forEach(([prov, t]) => {
+      filas.push([PROVINCIA_LABEL[prov] || prov, t.jefes, t.personal]);
+    });
+
+    const csv = filas.map(fila => fila.map(c => `"${c ?? ''}"`).join(';')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'estructura_organizativa.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div style={styles.page} className="page-padding">
-      <div style={styles.header}>
-        <h1 style={styles.title}>Estructura organizativa</h1>
-        <p style={styles.subtitle}>Jefes (EM) y personal asignado por sucursal y depósito</p>
+      <div style={styles.header} className="header-flex">
+        <div>
+          <h1 style={styles.title}>Estructura organizativa</h1>
+          <p style={styles.subtitle}>Jefes (EM) y personal asignado por sucursal y depósito</p>
+        </div>
+        <button onClick={descargarExcel} style={styles.btnDownload}>⬇️ Descargar Excel</button>
+      </div>
+
+      <div style={styles.totalesGrid}>
+        {Object.entries(totalesPorProvincia).map(([prov, t]) => (
+          <div key={prov} style={styles.totalCard}>
+            <div style={styles.totalProvincia}>{PROVINCIA_LABEL[prov] || prov}</div>
+            <div style={styles.totalRow}><span>{t.jefes}</span> jefes (EM)</div>
+            <div style={styles.totalRow}><span>{t.personal}</span> personal/maestranza</div>
+          </div>
+        ))}
       </div>
 
       <select value={filterSucursal} onChange={e => setFilterSucursal(e.target.value)} style={styles.select}>
@@ -94,9 +157,14 @@ export default function EstructuraPage() {
 
 const styles = {
   page: { maxWidth:1200, margin:'0 auto', padding:'28px 20px', fontFamily:'system-ui, sans-serif' },
-  header: { marginBottom:16 },
+  header: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16, flexWrap:'wrap', gap:12 },
   title: { margin:0, fontSize:26, color:'#1a1a2e', fontWeight:700 },
   subtitle: { margin:'4px 0 0', fontSize:14, color:'#64748b' },
+  btnDownload: { background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'10px 20px', fontSize:14, fontWeight:600, cursor:'pointer' },
+  totalesGrid: { display:'flex', gap:14, marginBottom:20, flexWrap:'wrap' },
+  totalCard: { background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:10, padding:'14px 20px', minWidth:200 },
+  totalProvincia: { fontSize:14, fontWeight:700, color:'#1e40af', marginBottom:6 },
+  totalRow: { fontSize:13, color:'#374151' },
   select: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14, marginBottom:20 },
   sucursalCard: { marginBottom:28 },
   sucursalTitle: { fontSize:19, fontWeight:700, color:'#1a1a2e', marginBottom:12, borderBottom:'2px solid #e2e8f0', paddingBottom:8 },
