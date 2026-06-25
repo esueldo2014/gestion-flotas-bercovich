@@ -15,6 +15,7 @@ export default function CompensatoriosPage() {
   const verTodo = puedeAprobar;
   const esEM = role?.rol === 'EM';
   const gestionaPersonal = esEM || verTodo;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
 
   const [movimientos, setMovimientos] = useState([]);
   const [saldos, setSaldos]           = useState([]);
@@ -35,13 +36,23 @@ export default function CompensatoriosPage() {
       depositosIds = (asig ?? []).map(a => a.deposito_id);
     }
 
-    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
+    let sucursalIdsScope = null;
+    if (scopeProvincia) {
+      const { data: sucs } = await supabase.from('sucursales').select('id').eq('provincia', scopeProvincia);
+      sucursalIdsScope = new Set((sucs ?? []).map(s => s.id));
+    }
+
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true);
     if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
+
+    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
+    if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     const [movRes, salRes, usRes, persRes] = await Promise.all([
-      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha', { ascending:false }),
+      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha', { ascending:false }),
       supabase.from('dias_compensatorios_saldo').select('*'),
-      verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      verTodo ? usQuery : Promise.resolve({ data: [] }),
       gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
 
@@ -57,7 +68,9 @@ export default function CompensatoriosPage() {
 
     let filtrados;
     if (verTodo) {
-      filtrados = mov;
+      filtrados = sucursalIdsScope
+        ? mov.filter(m => sucursalIdsScope.has(m.usuarios_roles?.deposito_id) || sucursalIdsScope.has(m.personal?.deposito_id))
+        : mov;
     } else if (esEM) {
       const idsPersonal = new Set(pers.map(p => p.id));
       filtrados = mov.filter(m => m.usuario_id === role.id || idsPersonal.has(m.personal_id));
@@ -70,7 +83,7 @@ export default function CompensatoriosPage() {
     setUsuarios(us);
     setPersonal(pers);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, role?.id, role?.rubro_deposito_id]);
+  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

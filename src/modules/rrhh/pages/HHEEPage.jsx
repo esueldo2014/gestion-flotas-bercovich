@@ -19,6 +19,7 @@ export default function HHEEPage() {
   const verTodo = puedeAprobar;
   const esEM = role?.rol === 'EM';
   const gestionaPersonal = esEM || verTodo;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
 
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
@@ -39,12 +40,22 @@ export default function HHEEPage() {
       depositosIds = (asig ?? []).map(a => a.deposito_id);
     }
 
-    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
+    let sucursalIdsScope = null;
+    if (scopeProvincia) {
+      const { data: sucs } = await supabase.from('sucursales').select('id').eq('provincia', scopeProvincia);
+      sucursalIdsScope = new Set((sucs ?? []).map(s => s.id));
+    }
+
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true);
     if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
+
+    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
+    if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     const [hheeRes, usRes, persRes] = await Promise.all([
-      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha', { ascending:false }),
-      verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha', { ascending:false }),
+      verTodo ? usQuery : Promise.resolve({ data: [] }),
       gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
 
@@ -60,7 +71,9 @@ export default function HHEEPage() {
 
     let filtrados;
     if (verTodo) {
-      filtrados = hhee;
+      filtrados = sucursalIdsScope
+        ? hhee.filter(r => sucursalIdsScope.has(r.usuarios_roles?.deposito_id) || sucursalIdsScope.has(r.personal?.deposito_id))
+        : hhee;
     } else if (esEM) {
       const idsPersonal = new Set(pers.map(p => p.id));
       filtrados = hhee.filter(r => r.usuario_id === role.id || idsPersonal.has(r.personal_id));
@@ -72,7 +85,7 @@ export default function HHEEPage() {
     setUsuarios(us);
     setPersonal(pers);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, role?.id, role?.rubro_deposito_id]);
+  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

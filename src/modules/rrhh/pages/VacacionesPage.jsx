@@ -20,6 +20,7 @@ export default function VacacionesPage() {
   const verTodo = puedeAprobar;
   const esEM = role?.rol === 'EM';
   const gestionaPersonal = esEM || verTodo;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
   const anioActual = new Date().getFullYear();
 
   const [solicitudes, setSolicitudes] = useState([]);
@@ -41,16 +42,26 @@ export default function VacacionesPage() {
       depositosIds = (asig ?? []).map(a => a.deposito_id);
     }
 
-    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
-    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    let sucursalIdsScope = null;
+    if (scopeProvincia) {
+      const { data: sucs } = await supabase.from('sucursales').select('id').eq('provincia', scopeProvincia);
+      sucursalIdsScope = new Set((sucs ?? []).map(s => s.id));
+    }
 
-    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha_desde', { ascending:false });
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true);
+    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
+
+    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
+    if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
+
+    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha_desde', { ascending:false });
     if (!verTodo && !esEM) solQuery = solQuery.eq('usuario_id', role.id);
 
     const [solRes, asigRes, usRes, persRes] = await Promise.all([
       solQuery,
       supabase.from('vacaciones_asignacion').select('*').eq('anio', anioActual),
-      verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      verTodo ? usQuery : Promise.resolve({ data: [] }),
       gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
     if (solRes.error || asigRes.error || usRes.error || persRes.error) {
@@ -64,6 +75,8 @@ export default function VacacionesPage() {
     if (esEM && !verTodo) {
       const idsPersonal = new Set(pers.map(p => p.id));
       sol = sol.filter(s => s.usuario_id === role.id || idsPersonal.has(s.personal_id));
+    } else if (verTodo && sucursalIdsScope) {
+      sol = sol.filter(s => sucursalIdsScope.has(s.usuarios_roles?.deposito_id) || sucursalIdsScope.has(s.personal?.deposito_id));
     }
 
     setSolicitudes(sol);
@@ -71,7 +84,7 @@ export default function VacacionesPage() {
     setUsuarios(usRes.data ?? []);
     setPersonal(pers);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, role?.id, role?.rubro_deposito_id, anioActual]);
+  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id, anioActual]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
