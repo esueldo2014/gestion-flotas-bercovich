@@ -159,17 +159,29 @@ export default function CompensatoriosPage() {
       setError('El saldo de esta persona ya no alcanza para aprobar esta solicitud.');
       return;
     }
-    await supabase.from('dias_compensatorios_movimientos').update({
+    const { error: errMov } = await supabase.from('dias_compensatorios_movimientos').update({
       estado, aprobado_por: role.id, fecha_aprobacion: new Date().toISOString(),
     }).eq('id', m.id);
+    if (errMov) { setError(errMov.message); return; }
 
     if (estado === 'aprobado') {
       const nuevoSaldo = m.tipo === 'generado' ? saldoActual + m.dias : saldoActual - m.dias;
-      await supabase.from('dias_compensatorios_saldo').upsert({
-        usuario_id: esPersonal ? null : m.usuario_id,
-        personal_id: esPersonal ? m.personal_id : null,
-        saldo_dias: nuevoSaldo, updated_at: new Date().toISOString(),
-      }, { onConflict: esPersonal ? 'personal_id' : 'usuario_id' });
+      const filterCol = esPersonal ? 'personal_id' : 'usuario_id';
+      const filterVal = esPersonal ? m.personal_id : m.usuario_id;
+
+      const { data: existente, error: errSel } = await supabase
+        .from('dias_compensatorios_saldo').select('id').eq(filterCol, filterVal).maybeSingle();
+      if (errSel) { setError(errSel.message); return; }
+
+      const { error: errSaldo } = existente
+        ? await supabase.from('dias_compensatorios_saldo')
+            .update({ saldo_dias: nuevoSaldo, updated_at: new Date().toISOString() }).eq('id', existente.id)
+        : await supabase.from('dias_compensatorios_saldo').insert({
+            usuario_id: esPersonal ? null : m.usuario_id,
+            personal_id: esPersonal ? m.personal_id : null,
+            saldo_dias: nuevoSaldo, updated_at: new Date().toISOString(),
+          });
+      if (errSaldo) { setError(errSaldo.message); return; }
     }
     await fetchAll();
   }
