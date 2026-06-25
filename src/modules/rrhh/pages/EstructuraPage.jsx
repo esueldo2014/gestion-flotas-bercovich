@@ -7,6 +7,7 @@ export default function EstructuraPage() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [filterSucursal, setFilterSucursal] = useState('');
+  const [filterProvincia, setFilterProvincia] = useState('');
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -29,7 +30,10 @@ export default function EstructuraPage() {
   if (loading || !data) return <div style={styles.page} className="page-padding"><p style={styles.info}>Cargando...</p></div>;
 
   const { sucursales, depositos, usuarios, personal, asignaciones } = data;
-  const sucursalesFiltradas = filterSucursal ? sucursales.filter(s => String(s.id) === filterSucursal) : sucursales;
+  const sucursalesFiltradas = sucursales
+    .filter(s => !filterProvincia || s.provincia === filterProvincia)
+    .filter(s => !filterSucursal || String(s.id) === filterSucursal);
+  const sucursalesParaSelect = filterProvincia ? sucursales.filter(s => s.provincia === filterProvincia) : sucursales;
 
   function jefesDe(depId) {
     return asignaciones
@@ -107,9 +111,18 @@ export default function EstructuraPage() {
         ))}
       </div>
 
+      <div style={styles.tabs}>
+        {['', 'T', 'S'].map(p => (
+          <button key={p} onClick={() => { setFilterProvincia(p); setFilterSucursal(''); }}
+            style={{ ...styles.tab, ...(filterProvincia === p ? styles.tabActive : {}) }}>
+            {p === '' ? 'Todas las provincias' : PROVINCIA_LABEL[p]}
+          </button>
+        ))}
+      </div>
+
       <select value={filterSucursal} onChange={e => setFilterSucursal(e.target.value)} style={styles.select}>
         <option value="">Todas las sucursales</option>
-        {sucursales.map(s => <option key={s.id} value={s.id}>{s.code} — {s.nombre}</option>)}
+        {sucursalesParaSelect.map(s => <option key={s.id} value={s.id}>{s.code} — {s.nombre}</option>)}
       </select>
 
       {sucursalesFiltradas.map(suc => {
@@ -178,6 +191,9 @@ const styles = {
   totalCard: { background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:10, padding:'14px 20px', minWidth:200 },
   totalProvincia: { fontSize:14, fontWeight:700, color:'#1e40af', marginBottom:6 },
   totalRow: { fontSize:13, color:'#374151' },
+  tabs: { display:'flex', gap:6, marginBottom:14, borderBottom:'1px solid #e2e8f0' },
+  tab: { background:'transparent', border:'none', borderBottom:'3px solid transparent', color:'#64748b', padding:'9px 16px', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'system-ui, sans-serif' },
+  tabActive: { color:'#1e40af', borderBottom:'3px solid #2563eb' },
   select: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14, marginBottom:20 },
   sucursalCard: { marginBottom:28 },
   sucursalTitle: { fontSize:19, fontWeight:700, color:'#1a1a2e', marginBottom:12, borderBottom:'2px solid #e2e8f0', paddingBottom:8 },
