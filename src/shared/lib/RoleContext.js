@@ -22,9 +22,9 @@ export const can = {
 
   // rrhh
   registrarCapacitacion:   (rol) => ['Supervisor', 'Gerencia'].includes(rol),
-  generarCompensatorio:    (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  generarCompensatorio:    (rol) => ['EM', 'Supervisor', 'Gerencia'].includes(rol),
   aprobarSolicitudRRHH:    (rol) => ['Supervisor', 'Gerencia'].includes(rol), // HHEE, compensatorios, vacaciones
-  asignarVacaciones:       (rol) => rol === 'Gerencia',
+  asignarVacaciones:       (rol) => ['EM', 'Gerencia'].includes(rol),
   verInformeRRHH:          (rol) => rol === 'Gerencia',
   verCierreHHEE:           (rol) => ['Supervisor', 'Gerencia'].includes(rol),
   gestionarEquipo:         (rol) => rol === 'Gerencia',

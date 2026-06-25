@@ -37,7 +37,7 @@ export default function CierreHHEEPage() {
 
     const { data, error: err } = await supabase
       .from('hhee')
-      .select('*, usuarios_roles!usuario_id(nombre, email)')
+      .select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)')
       .eq('estado', 'aprobada')
       .gte('fecha', desde)
       .lte('fecha', hasta)
@@ -65,13 +65,13 @@ export default function CierreHHEEPage() {
   const tarifa50  = parseFloat(valor50) || 0;
   const tarifa100 = parseFloat(valor100) || 0;
 
-  // agrupar por empleado, separando Inventario (PRE INVENTARIO + INVENTARIO) del resto
+  // agrupar por empleado (cuenta o personal), separando Inventario (PRE INVENTARIO + INVENTARIO) del resto
   const porEmpleado = {};
   registros.forEach(r => {
-    const key = r.usuario_id;
+    const key = r.personal_id ? `p:${r.personal_id}` : `u:${r.usuario_id}`;
     if (!porEmpleado[key]) {
       porEmpleado[key] = {
-        nombre: r.usuarios_roles?.nombre || r.usuarios_roles?.email || 'Sin nombre',
+        nombre: r.personal?.nombre || r.usuarios_roles?.nombre || r.usuarios_roles?.email || 'Sin nombre',
         horas50: 0, horas100: 0,
         horas50Inv: 0, horas100Inv: 0,
         categorias: new Set(), categoriasInv: new Set(),
@@ -264,7 +264,7 @@ export default function CierreHHEEPage() {
                 <tbody>
                   {registros.map(r => (
                     <tr key={r.id} style={styles.tr}>
-                      <td style={styles.td}>{r.usuarios_roles?.nombre || r.usuarios_roles?.email}</td>
+                      <td style={styles.td}>{r.personal?.nombre || r.usuarios_roles?.nombre || r.usuarios_roles?.email}</td>
                       <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
                       <td style={styles.td}>{r.tipo}</td>
                       <td style={styles.td}>{r.categoria || '—'}</td>

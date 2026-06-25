@@ -17,12 +17,14 @@ export default function HHEEPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const verTodo = puedeAprobar;
-  const soloMiDeposito = false; // Supervisor y Gerencia ven todo
+  const esEM = role?.rol === 'EM';
+  const gestionaPersonal = esEM || verTodo;
 
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
+  const [personal, setPersonal]   = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [form, setForm] = useState({ usuario_id:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
+  const [form, setForm] = useState({ target:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
@@ -30,32 +32,41 @@ export default function HHEEPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email');
-    if (soloMiDeposito) usQuery = usQuery.eq('deposito_id', role.deposito_id);
 
-    const [hheeRes, usRes] = await Promise.all([
-      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email)').order('fecha', { ascending:false }),
-      verTodo ? usQuery : Promise.resolve({ data: [] }),
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
+    if (esEM && !verTodo) personalQuery = personalQuery.eq('rubro_deposito_id', role.rubro_deposito_id);
+
+    const [hheeRes, usRes, persRes] = await Promise.all([
+      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha', { ascending:false }),
+      verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
 
-    if (hheeRes.error || usRes.error) {
-      setError((hheeRes.error || usRes.error).message);
+    if (hheeRes.error || usRes.error || persRes.error) {
+      setError((hheeRes.error || usRes.error || persRes.error).message);
     } else {
       setError(null);
     }
 
-    const hhee = hheeRes.data;
-    const us = usRes.data;
+    const hhee = hheeRes.data ?? [];
+    const us = usRes.data ?? [];
+    const pers = persRes.data ?? [];
 
-    const idsVisibles = verTodo ? new Set(us?.map(u => u.id)) : null;
-    const filtrados = verTodo
-      ? (hhee ?? []).filter(r => idsVisibles.has(r.usuario_id))
-      : (hhee ?? []).filter(r => r.usuario_id === role.id);
+    let filtrados;
+    if (verTodo) {
+      filtrados = hhee;
+    } else if (esEM) {
+      const idsPersonal = new Set(pers.map(p => p.id));
+      filtrados = hhee.filter(r => r.usuario_id === role.id || idsPersonal.has(r.personal_id));
+    } else {
+      filtrados = hhee.filter(r => r.usuario_id === role.id);
+    }
 
     setRegistros(filtrados);
-    setUsuarios(us ?? []);
+    setUsuarios(us);
+    setPersonal(pers);
     setLoading(false);
-  }, [verTodo, soloMiDeposito, role?.id, role?.deposito_id]);
+  }, [verTodo, esEM, gestionaPersonal, role?.id, role?.rubro_deposito_id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -69,11 +80,20 @@ export default function HHEEPage() {
     e.preventDefault();
     setError(null);
     if (!form.fecha || !form.horas) return;
-    if (verTodo && !form.usuario_id) { setError('Elegí para qué empleado es esta hora extra.'); return; }
+    if (gestionaPersonal && !form.target) { setError('Elegí para quién es esta hora extra.'); return; }
     if (!form.categoria) { setError('Elegí una categoría.'); return; }
+
+    let usuario_id = null, personal_id = null;
+    if (gestionaPersonal) {
+      const [tipo, id] = form.target.split(':');
+      if (tipo === 'p') personal_id = id; else usuario_id = id;
+    } else {
+      usuario_id = role.id;
+    }
+
     setSaving(true);
     const { error: err } = await supabase.from('hhee').insert({
-      usuario_id: verTodo ? form.usuario_id : role.id,
+      usuario_id, personal_id,
       fecha: form.fecha,
       tipo: form.tipo,
       categoria: form.categoria,
@@ -82,7 +102,7 @@ export default function HHEEPage() {
     });
     setSaving(false);
     if (err) { setError(err.message); return; }
-    setForm({ usuario_id:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
+    setForm({ target:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
     await fetchAll();
   }
 
@@ -99,20 +119,34 @@ export default function HHEEPage() {
     .filter(r => !filterEstado || r.estado === filterEstado)
     .filter(r => !filterCategoria || r.categoria === filterCategoria);
 
+  function nombreDe(r) {
+    return r.personal?.nombre || r.usuarios_roles?.nombre || r.usuarios_roles?.email || '—';
+  }
+
   return (
     <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>Horas extra</h1>
-        <p style={styles.subtitle}>{verTodo ? 'Todas las solicitudes' : 'Tus horas extra cargadas'}</p>
+        <p style={styles.subtitle}>{verTodo ? 'Todas las solicitudes' : esEM ? 'Tuyas y de tu equipo' : 'Tus horas extra cargadas'}</p>
       </div>
 
       {error && <p style={styles.error}>{error}</p>}
 
       <form onSubmit={handleSubmit} style={styles.form}>
-        {verTodo && (
-          <select value={form.usuario_id} onChange={e => setForm(f => ({ ...f, usuario_id: e.target.value }))} required style={styles.input}>
-            <option value="">Empleado...</option>
-            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+        {gestionaPersonal && (
+          <select value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
+            <option value="">¿Para quién?</option>
+            {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
+            {personal.length > 0 && (
+              <optgroup label="Personal / Maestranza">
+                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+              </optgroup>
+            )}
+            {verTodo && usuarios.length > 0 && (
+              <optgroup label="Empleados">
+                {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
+              </optgroup>
+            )}
           </select>
         )}
         <input type="date" value={form.fecha} onChange={e => handleFechaChange(e.target.value)} required style={styles.input} />
@@ -151,7 +185,7 @@ export default function HHEEPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo ? ['Empleado'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo || esEM ? ['Empleado'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -161,7 +195,7 @@ export default function HHEEPage() {
                 const col = ESTADO_COLORS[r.estado] ?? {};
                 return (
                   <tr key={r.id} style={styles.tr}>
-                    {verTodo && <td style={styles.td}>{r.usuarios_roles?.nombre || r.usuarios_roles?.email}</td>}
+                    {(verTodo || esEM) && <td style={styles.td}>{nombreDe(r)}</td>}
                     <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{r.tipo || '—'}</td>
                     <td style={styles.td}>{r.categoria || '—'}</td>

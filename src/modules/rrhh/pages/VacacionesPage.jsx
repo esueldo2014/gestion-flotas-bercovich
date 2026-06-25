@@ -18,48 +18,82 @@ export default function VacacionesPage() {
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const puedeAsignar = can.asignarVacaciones(role?.rol);
   const verTodo = puedeAprobar;
+  const esEM = role?.rol === 'EM';
+  const gestionaPersonal = esEM || verTodo;
   const anioActual = new Date().getFullYear();
 
   const [solicitudes, setSolicitudes] = useState([]);
   const [asignaciones, setAsignaciones] = useState([]);
   const [usuarios, setUsuarios]       = useState([]);
+  const [personal, setPersonal]       = useState([]);
   const [loading, setLoading]         = useState(true);
-  const [formSol, setFormSol] = useState({ fecha_desde:'', fecha_hasta:'' });
-  const [formAsig, setFormAsig] = useState({ usuario_id:'', anio: anioActual, dias_asignados:'' });
+  const [formSol, setFormSol] = useState({ target:'', fecha_desde:'', fecha_hasta:'' });
+  const [formAsig, setFormAsig] = useState({ target:'', anio: anioActual, dias_asignados:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email)').order('fecha_desde', { ascending:false });
-    if (!verTodo) solQuery = solQuery.eq('usuario_id', role.id);
-    const [solRes, asigRes, usRes] = await Promise.all([
+
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id').eq('activo', true);
+    if (esEM && !verTodo) personalQuery = personalQuery.eq('rubro_deposito_id', role.rubro_deposito_id);
+
+    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email), personal(nombre)').order('fecha_desde', { ascending:false });
+    if (!verTodo && !esEM) solQuery = solQuery.eq('usuario_id', role.id);
+
+    const [solRes, asigRes, usRes, persRes] = await Promise.all([
       solQuery,
       supabase.from('vacaciones_asignacion').select('*').eq('anio', anioActual),
       verTodo ? supabase.from('usuarios_roles').select('id, nombre, email') : Promise.resolve({ data: [] }),
+      gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
-    if (solRes.error || asigRes.error || usRes.error) {
-      setError((solRes.error || asigRes.error || usRes.error).message);
+    if (solRes.error || asigRes.error || usRes.error || persRes.error) {
+      setError((solRes.error || asigRes.error || usRes.error || persRes.error).message);
     } else {
       setError(null);
     }
-    setSolicitudes(solRes.data ?? []);
+
+    let sol = solRes.data ?? [];
+    const pers = persRes.data ?? [];
+    if (esEM && !verTodo) {
+      const idsPersonal = new Set(pers.map(p => p.id));
+      sol = sol.filter(s => s.usuario_id === role.id || idsPersonal.has(s.personal_id));
+    }
+
+    setSolicitudes(sol);
     setAsignaciones(asigRes.data ?? []);
     setUsuarios(usRes.data ?? []);
+    setPersonal(pers);
     setLoading(false);
-  }, [verTodo, role?.id, anioActual]);
+  }, [verTodo, esEM, gestionaPersonal, role?.id, role?.rubro_deposito_id, anioActual]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  function diasUsadosOPendientes(usuarioId) {
+  function diasUsadosOPendientes(target) {
+    const [tipo, id] = target.split(':');
     return solicitudes
-      .filter(s => s.usuario_id === usuarioId && s.estado !== 'rechazado')
+      .filter(s => (tipo === 'p' ? s.personal_id === id : s.usuario_id === id))
+      .filter(s => s.estado !== 'rechazado')
       .filter(s => new Date(s.fecha_desde).getFullYear() === anioActual)
       .reduce((acc, s) => acc + s.dias, 0);
   }
 
-  const miAsignacion = asignaciones.find(a => a.usuario_id === role.id)?.dias_asignados ?? 0;
-  const miUsado = diasUsadosOPendientes(role.id);
+  function asignacionDe(target) {
+    const [tipo, id] = target.split(':');
+    const a = tipo === 'p'
+      ? asignaciones.find(a => a.personal_id === id)
+      : asignaciones.find(a => a.usuario_id === id);
+    return a?.dias_asignados ?? 0;
+  }
+
+  function nombreDeTarget(target) {
+    const [tipo, id] = target.split(':');
+    if (tipo === 'p') return personal.find(p => p.id === id)?.nombre;
+    return usuarios.find(u => u.id === id)?.nombre;
+  }
+
+  const miAsignacion = asignacionDe(`u:${role.id}`);
+  const miUsado = diasUsadosOPendientes(`u:${role.id}`);
   const miDisponible = miAsignacion - miUsado;
 
   async function handleSubmitSolicitud(e) {
@@ -67,18 +101,26 @@ export default function VacacionesPage() {
     setError(null);
     const { fecha_desde, fecha_hasta } = formSol;
     if (!fecha_desde || !fecha_hasta) return;
+    if (gestionaPersonal && !formSol.target) { setError('Elegí para quién es esta solicitud.'); return; }
     const dias = diasEntre(fecha_desde, fecha_hasta);
     if (dias <= 0) { setError('El rango de fechas no es válido.'); return; }
-    if (dias > miDisponible) {
-      setError(`No alcanza tu saldo disponible (${miDisponible} días).`);
+
+    const target = gestionaPersonal ? formSol.target : `u:${role.id}`;
+    const disponible = asignacionDe(target) - diasUsadosOPendientes(target);
+    if (dias > disponible) {
+      setError(`No alcanza el saldo disponible (${disponible} días).`);
       return;
     }
+    const [tipo, id] = target.split(':');
     setSaving(true);
-    await supabase.from('vacaciones_solicitudes').insert({
-      usuario_id: role.id, fecha_desde, fecha_hasta, dias,
+    const { error: err } = await supabase.from('vacaciones_solicitudes').insert({
+      usuario_id: tipo === 'u' ? id : null,
+      personal_id: tipo === 'p' ? id : null,
+      fecha_desde, fecha_hasta, dias,
     });
     setSaving(false);
-    setFormSol({ fecha_desde:'', fecha_hasta:'' });
+    if (err) { setError(err.message); return; }
+    setFormSol({ target:'', fecha_desde:'', fecha_hasta:'' });
     await fetchAll();
   }
 
@@ -86,21 +128,26 @@ export default function VacacionesPage() {
     e.preventDefault();
     setError(null);
     const dias = parseFloat(formAsig.dias_asignados);
-    if (!formAsig.usuario_id || !dias) return;
+    if (!formAsig.target || !dias) return;
+    const [tipo, id] = formAsig.target.split(':');
     setSaving(true);
-    await supabase.from('vacaciones_asignacion').upsert({
-      usuario_id: formAsig.usuario_id, anio: formAsig.anio, dias_asignados: dias,
-    }, { onConflict: 'usuario_id,anio' });
+    const { error: err } = await supabase.from('vacaciones_asignacion').upsert({
+      usuario_id: tipo === 'u' ? id : null,
+      personal_id: tipo === 'p' ? id : null,
+      anio: formAsig.anio, dias_asignados: dias,
+    }, { onConflict: tipo === 'u' ? 'usuario_id,anio' : 'personal_id,anio' });
     setSaving(false);
-    setFormAsig({ usuario_id:'', anio: anioActual, dias_asignados:'' });
+    if (err) { setError(err.message); return; }
+    setFormAsig({ target:'', anio: anioActual, dias_asignados:'' });
     await fetchAll();
   }
 
   async function handleDecision(s, estado) {
     setError(null);
+    const target = s.personal_id ? `p:${s.personal_id}` : `u:${s.usuario_id}`;
     if (estado === 'aprobado') {
-      const asignado = asignaciones.find(a => a.usuario_id === s.usuario_id)?.dias_asignados ?? 0;
-      const usado = diasUsadosOPendientes(s.usuario_id) ; // ya incluye esta solicitud pendiente
+      const asignado = asignacionDe(target);
+      const usado = diasUsadosOPendientes(target); // ya incluye esta solicitud pendiente
       if (usado > asignado) {
         setError('El saldo de esta persona ya no alcanza para aprobar esta solicitud.');
         return;
@@ -110,6 +157,10 @@ export default function VacacionesPage() {
       estado, aprobado_por: role.id, fecha_aprobacion: new Date().toISOString(),
     }).eq('id', s.id);
     await fetchAll();
+  }
+
+  function nombreDe(s) {
+    return s.personal?.nombre || s.usuarios_roles?.nombre || s.usuarios_roles?.email || '—';
   }
 
   return (
@@ -125,6 +176,22 @@ export default function VacacionesPage() {
 
       <form onSubmit={handleSubmitSolicitud} style={styles.form}>
         <span style={styles.formLabel}>Solicitar:</span>
+        {gestionaPersonal && (
+          <select value={formSol.target} onChange={e => setFormSol(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
+            <option value="">¿Para quién?</option>
+            {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
+            {personal.length > 0 && (
+              <optgroup label="Personal / Maestranza">
+                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+              </optgroup>
+            )}
+            {verTodo && usuarios.length > 0 && (
+              <optgroup label="Empleados">
+                {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
+              </optgroup>
+            )}
+          </select>
+        )}
         <input type="date" value={formSol.fecha_desde} onChange={e => setFormSol(f => ({ ...f, fecha_desde: e.target.value }))} required style={styles.input} />
         <span style={styles.formLabel}>al</span>
         <input type="date" value={formSol.fecha_hasta} onChange={e => setFormSol(f => ({ ...f, fecha_hasta: e.target.value }))} required style={styles.input} />
@@ -134,9 +201,18 @@ export default function VacacionesPage() {
       {puedeAsignar && (
         <form onSubmit={handleSubmitAsignacion} style={styles.form}>
           <span style={styles.formLabel}>Asignar días {anioActual}:</span>
-          <select value={formAsig.usuario_id} onChange={e => setFormAsig(f => ({ ...f, usuario_id: e.target.value }))} required style={styles.input}>
-            <option value="">Empleado...</option>
-            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre || u.email}</option>)}
+          <select value={formAsig.target} onChange={e => setFormAsig(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
+            <option value="">¿Para quién?</option>
+            {personal.length > 0 && (
+              <optgroup label="Personal / Maestranza">
+                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+              </optgroup>
+            )}
+            {usuarios.length > 0 && (
+              <optgroup label="Empleados">
+                {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
+              </optgroup>
+            )}
           </select>
           <input type="number" min="0" placeholder="Días asignados" value={formAsig.dias_asignados} onChange={e => setFormAsig(f => ({ ...f, dias_asignados: e.target.value }))} required style={styles.input} />
           <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Asignar'}</button>
@@ -150,7 +226,7 @@ export default function VacacionesPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo ? ['Empleado'] : []), 'Desde','Hasta','Días','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo || esEM ? ['Empleado'] : []), 'Desde','Hasta','Días','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -160,7 +236,7 @@ export default function VacacionesPage() {
                 const col = ESTADO_COLORS[s.estado] ?? {};
                 return (
                   <tr key={s.id} style={styles.tr}>
-                    {verTodo && <td style={styles.td}>{s.usuarios_roles?.nombre || s.usuarios_roles?.email}</td>}
+                    {(verTodo || esEM) && <td style={styles.td}>{nombreDe(s)}</td>}
                     <td style={styles.td}>{new Date(s.fecha_desde).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{new Date(s.fecha_hasta).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{s.dias}</td>
