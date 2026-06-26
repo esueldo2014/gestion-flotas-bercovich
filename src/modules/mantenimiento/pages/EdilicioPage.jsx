@@ -21,6 +21,10 @@ const PRIORIDAD_COLORS = {
 export default function EdilicioPage() {
   const role = useRole();
   const verCostos = can.gestionarCotizaciones(role?.rol);
+  const esEM = role?.rol === 'EM';
+  const esMecanico = role?.rol === 'Mecánico';
+  const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
   const permisos = {
     puedeCrearEditar: true, // todos pueden reportar
     puedeGestionarCotizaciones: can.gestionarCotizaciones(role?.rol),
@@ -51,6 +55,15 @@ export default function EdilicioPage() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    if (scopeSucursal) {
+      const suc = depositos.find(d => d.id === scopeSucursal);
+      if (suc?.provincia) setProvincia(suc.provincia);
+    } else if (scopeProvincia) {
+      setProvincia(scopeProvincia);
+    }
+  }, [scopeSucursal, scopeProvincia, depositos]);
 
   async function handleSave(form) {
     const payload = {
@@ -94,6 +107,7 @@ export default function EdilicioPage() {
 
   const filtered = solicitudes
     .filter(s => s.provincia === provincia)
+    .filter(s => !scopeSucursal || s.deposito_id === scopeSucursal)
     .filter(s => !filterEstado || s.estado === filterEstado);
 
   const pendientesAprobacion = solicitudes.filter(s => s.provincia === provincia && s.estado === 'Pendiente de aprobación').length;
@@ -112,7 +126,9 @@ export default function EdilicioPage() {
         <button onClick={() => { setEditing(null); setShowForm(true); }} style={styles.btnNew}>+ Reportar necesidad</button>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterEstado(''); }} />
+      {!scopeSucursal && !scopeProvincia && (
+        <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterEstado(''); }} />
+      )}
 
       <div style={styles.filters}>
         <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={styles.select}>

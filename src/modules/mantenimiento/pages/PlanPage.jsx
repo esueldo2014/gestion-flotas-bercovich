@@ -45,6 +45,10 @@ function calcSemaforo(tarea, ultimaEjecucion, horoActual) {
 export default function PlanPage() {
   const role = useRole();
   const puedeEditar = can.editarPlan(role?.rol);
+  const esEM = role?.rol === 'EM';
+  const esMecanico = role?.rol === 'Mecánico';
+  const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
   const [machines, setMachines]     = useState([]);
   const [depositos, setDepositos]   = useState([]);
   const [selected, setSelected]     = useState(null);
@@ -69,6 +73,15 @@ export default function PlanPage() {
   }, []);
 
   useEffect(() => { fetchMachines(); }, [fetchMachines]);
+
+  useEffect(() => {
+    if (scopeSucursal) {
+      const suc = depositos.find(d => d.id === scopeSucursal);
+      if (suc?.provincia) setProvincia(suc.provincia);
+    } else if (scopeProvincia) {
+      setProvincia(scopeProvincia);
+    }
+  }, [scopeSucursal, scopeProvincia, depositos]);
 
   const fetchTareas = useCallback(async (maqId) => {
     const [{ data: plan }, { data: ej }, { data: lect }] = await Promise.all([
@@ -131,8 +144,16 @@ export default function PlanPage() {
     return null;
   }
 
+  const depositosVisibles = scopeSucursal
+    ? depositos.filter(d => d.id === scopeSucursal)
+    : scopeProvincia
+      ? depositos.filter(d => d.provincia === scopeProvincia)
+      : depositos;
+  const idsVisibles = new Set(depositosVisibles.map(d => d.id));
+
   const filtered = machines
     .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsVisibles.has(m.deposito_id))
     .filter(m => !filterDep || String(m.deposito_id) === String(filterDep));
   const unidad = selected?.tipo === 'Autoelevador' ? 'hs' : 'km';
 
@@ -145,11 +166,13 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+      {!scopeSucursal && !scopeProvincia && (
+        <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+      )}
 
       <DepositoResumen
-        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
-        depositos={depositos}
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia)).filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsVisibles.has(m.deposito_id))}
+        depositos={depositosVisibles}
         selected={filterDep}
         onSelect={(v) => { setFilterDep(v); setSelected(null); }}
       />
@@ -158,7 +181,7 @@ export default function PlanPage() {
         <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
             <option value="">Todas las sucursales</option>
-            {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
+            {depositosVisibles.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
           </select>
           {loading ? <p style={styles.info}>Cargando...</p> : (
             <ul style={styles.list}>

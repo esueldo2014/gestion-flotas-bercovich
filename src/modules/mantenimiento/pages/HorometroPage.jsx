@@ -1,11 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../shared/lib/supabaseClient';
+import { useRole } from '../../../shared/lib/RoleContext';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 import DepositoResumen from '../components/common/DepositoResumen';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 export default function HorometroPage() {
+  const role = useRole();
+  const esEM = role?.rol === 'EM';
+  const esMecanico = role?.rol === 'Mecánico';
+  const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
   const [machines, setMachines]   = useState([]);
   const [depositos, setDepositos] = useState([]);
   const [selected, setSelected]   = useState(null);
@@ -34,6 +40,15 @@ export default function HorometroPage() {
   }, []);
 
   useEffect(() => { fetchMachines(); }, [fetchMachines]);
+
+  useEffect(() => {
+    if (scopeSucursal) {
+      const suc = depositos.find(d => d.id === scopeSucursal);
+      if (suc?.provincia) setProvincia(suc.provincia);
+    } else if (scopeProvincia) {
+      setProvincia(scopeProvincia);
+    }
+  }, [scopeSucursal, scopeProvincia, depositos]);
 
   const fetchLecturas = useCallback(async (maqId) => {
     const { data } = await supabase
@@ -112,8 +127,16 @@ export default function HorometroPage() {
   const unidad = selected?.tipo === 'Autoelevador' ? 'hs' : 'km';
   const ultimaLectura = lecturas.length > 0 ? Number(lecturas[0].valor) : null;
   const usoMensual = selected ? calcularUsoMensual(lecturas, selected.hora_inicial) : [];
+  const depositosVisibles = scopeSucursal
+    ? depositos.filter(d => d.id === scopeSucursal)
+    : scopeProvincia
+      ? depositos.filter(d => d.provincia === scopeProvincia)
+      : depositos;
+  const idsVisibles = new Set(depositosVisibles.map(d => d.id));
+
   const filtered = machines
     .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsVisibles.has(m.deposito_id))
     .filter(m => !filterDep || String(m.deposito_id) === String(filterDep));
 
   return (
@@ -123,11 +146,13 @@ export default function HorometroPage() {
         <p style={styles.subtitle}>Registro de uso por máquina — el sistema calcula automáticamente el uso mensual</p>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+      {!scopeSucursal && !scopeProvincia && (
+        <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+      )}
 
       <DepositoResumen
-        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
-        depositos={depositos}
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia)).filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsVisibles.has(m.deposito_id))}
+        depositos={depositosVisibles}
         selected={filterDep}
         onSelect={(v) => { setFilterDep(v); setSelected(null); }}
       />
@@ -137,7 +162,7 @@ export default function HorometroPage() {
         <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
             <option value="">Todas las sucursales</option>
-            {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
+            {depositosVisibles.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
           </select>
           {loading ? <p style={styles.info}>Cargando...</p> : (
             <ul style={styles.list}>

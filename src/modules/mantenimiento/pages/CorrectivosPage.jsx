@@ -15,6 +15,10 @@ export default function CorrectivosPage() {
   const role = useRole();
   const verCostos = can.verCostos(role?.rol);
   const puedeGestionar = can.cerrarOT(role?.rol); // editar/cerrar/eliminar
+  const esEM = role?.rol === 'EM';
+  const esMecanico = role?.rol === 'Mecánico';
+  const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
   const [correctivos, setCorrectivos] = useState([]);
   const [machines, setMachines]       = useState([]);
   const [depositos, setDepositos]     = useState([]);
@@ -40,6 +44,15 @@ export default function CorrectivosPage() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    if (scopeSucursal) {
+      const suc = depositos.find(d => d.id === scopeSucursal);
+      if (suc?.provincia) setProvincia(suc.provincia);
+    } else if (scopeProvincia) {
+      setProvincia(scopeProvincia);
+    }
+  }, [scopeSucursal, scopeProvincia, depositos]);
 
   async function handleSave(form) {
     const payload = {
@@ -72,8 +85,16 @@ export default function CorrectivosPage() {
     await fetchAll();
   }
 
+  const depositosVisibles = scopeSucursal
+    ? depositos.filter(d => d.id === scopeSucursal)
+    : scopeProvincia
+      ? depositos.filter(d => d.provincia === scopeProvincia)
+      : depositos;
+  const idsDepositosVisibles = new Set(depositosVisibles.map(d => d.id));
+
   const machinesProv = machines
     .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsDepositosVisibles.has(m.deposito_id))
     .filter(m => !filterDeposito || String(m.deposito_id) === String(filterDeposito));
   const idsProv = new Set(machinesProv.map(m => m.id));
 
@@ -98,11 +119,13 @@ export default function CorrectivosPage() {
         <button onClick={() => { setEditing(null); setShowForm(true); }} style={styles.btnNew}>+ Nueva OT</button>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterMaquina(''); setFilterDeposito(''); }} />
+      {!scopeSucursal && !scopeProvincia && (
+        <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setFilterMaquina(''); setFilterDeposito(''); }} />
+      )}
 
       <DepositoResumen
-        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
-        depositos={depositos}
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia)).filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsDepositosVisibles.has(m.deposito_id))}
+        depositos={depositosVisibles}
         selected={filterDeposito}
         onSelect={(v) => { setFilterDeposito(v); setFilterMaquina(''); }}
       />

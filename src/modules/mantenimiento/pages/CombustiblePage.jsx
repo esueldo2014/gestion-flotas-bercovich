@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../shared/lib/supabaseClient';
+import { useRole } from '../../../shared/lib/RoleContext';
 import ProvinciaTabs, { esDeProvincia } from '../components/common/ProvinciaTabs';
 import DepositoResumen from '../components/common/DepositoResumen';
 
 export default function CombustiblePage() {
+  const role = useRole();
+  const esEM = role?.rol === 'EM';
+  const esMecanico = role?.rol === 'Mecánico';
+  const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
+  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
   const [machines, setMachines]   = useState([]);
   const [depositos, setDepositos] = useState([]);
   const [selected, setSelected]   = useState(null);
@@ -31,6 +37,15 @@ export default function CombustiblePage() {
   }, []);
 
   useEffect(() => { fetchMachines(); }, [fetchMachines]);
+
+  useEffect(() => {
+    if (scopeSucursal) {
+      const suc = depositos.find(d => d.id === scopeSucursal);
+      if (suc?.provincia) setProvincia(suc.provincia);
+    } else if (scopeProvincia) {
+      setProvincia(scopeProvincia);
+    }
+  }, [scopeSucursal, scopeProvincia, depositos]);
 
   const fetchCargas = useCallback(async (maqId) => {
     const { data } = await supabase
@@ -67,8 +82,16 @@ export default function CombustiblePage() {
   }
 
   const unidad = selected?.tipo === 'Autoelevador' ? 'hs' : 'km';
+  const depositosVisibles = scopeSucursal
+    ? depositos.filter(d => d.id === scopeSucursal)
+    : scopeProvincia
+      ? depositos.filter(d => d.provincia === scopeProvincia)
+      : depositos;
+  const idsVisibles = new Set(depositosVisibles.map(d => d.id));
+
   const filtered = machines
     .filter(m => esDeProvincia(m.numero_interno, provincia))
+    .filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsVisibles.has(m.deposito_id))
     .filter(m => !filterDep || String(m.deposito_id) === String(filterDep));
 
   // calcular rendimiento entre cargas consecutivas con horómetro registrado
@@ -96,11 +119,13 @@ export default function CombustiblePage() {
         <p style={styles.subtitle}>Registro de cargas de gasoil por máquina</p>
       </div>
 
-      <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+      {!scopeSucursal && !scopeProvincia && (
+        <ProvinciaTabs value={provincia} onChange={(p) => { setProvincia(p); setSelected(null); setFilterDep(''); }} />
+      )}
 
       <DepositoResumen
-        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia))}
-        depositos={depositos}
+        machines={machines.filter(m => esDeProvincia(m.numero_interno, provincia)).filter(m => (!scopeSucursal && !scopeProvincia) ? true : idsVisibles.has(m.deposito_id))}
+        depositos={depositosVisibles}
         selected={filterDep}
         onSelect={(v) => { setFilterDep(v); setSelected(null); }}
       />
@@ -109,7 +134,7 @@ export default function CombustiblePage() {
         <div style={styles.sidebar} className="sidebar-block">
           <select value={filterDep} onChange={e => { setFilterDep(e.target.value); setSelected(null); }} style={styles.select}>
             <option value="">Todas las sucursales</option>
-            {depositos.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
+            {depositosVisibles.map(d => <option key={d.id} value={d.id}>{d.code} — {d.nombre}</option>)}
           </select>
           {loading ? <p style={styles.info}>Cargando...</p> : (
             <ul style={styles.list}>
