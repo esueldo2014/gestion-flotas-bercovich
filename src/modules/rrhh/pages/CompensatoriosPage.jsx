@@ -231,6 +231,7 @@ export default function CompensatoriosPage() {
           <span style={styles.formLabel}>Generar día (ej. trabajó feriado):</span>
           <select value={formGen.target} onChange={e => setFormGen(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
+            {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
             {personal.length > 0 && (
               <optgroup label="Personal / Maestranza">
                 {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
