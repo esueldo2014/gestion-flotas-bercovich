@@ -150,11 +150,19 @@ export default function VacacionesPage() {
     if (!formAsig.target || !dias) return;
     const [tipo, id] = formAsig.target.split(':');
     setSaving(true);
-    const { error: err } = await supabase.from('vacaciones_asignacion').upsert({
-      usuario_id: tipo === 'u' ? id : null,
-      personal_id: tipo === 'p' ? id : null,
-      anio: formAsig.anio, dias_asignados: dias,
-    }, { onConflict: tipo === 'u' ? 'usuario_id,anio' : 'personal_id,anio' });
+
+    const filterCol = tipo === 'u' ? 'usuario_id' : 'personal_id';
+    const { data: existente, error: errSel } = await supabase
+      .from('vacaciones_asignacion').select('id').eq(filterCol, id).eq('anio', formAsig.anio).maybeSingle();
+    if (errSel) { setSaving(false); setError(errSel.message); return; }
+
+    const { error: err } = existente
+      ? await supabase.from('vacaciones_asignacion').update({ dias_asignados: dias }).eq('id', existente.id)
+      : await supabase.from('vacaciones_asignacion').insert({
+          usuario_id: tipo === 'u' ? id : null,
+          personal_id: tipo === 'p' ? id : null,
+          anio: formAsig.anio, dias_asignados: dias,
+        });
     setSaving(false);
     if (err) { setError(err.message); return; }
     setFormAsig({ target:'', anio: anioActual, dias_asignados:'' });
