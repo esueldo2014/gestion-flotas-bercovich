@@ -8,24 +8,24 @@ export function useRole() {
 
 // helpers de permisos
 export const can = {
-  verCostos:        (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
-  editarMaquinas:   (rol) => ['Supervisor', 'Gerencia'].includes(rol),
-  editarPlan:       (rol) => ['Supervisor', 'Gerencia'].includes(rol),
-  cerrarOT:         (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
-  verDashboard:     (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  verCostos:        (rol) => ['Mecánico', 'Jefe', 'Gerencia'].includes(rol),
+  editarMaquinas:   (rol) => ['Jefe', 'Gerencia'].includes(rol),
+  editarPlan:       (rol) => ['Jefe', 'Gerencia'].includes(rol),
+  cerrarOT:         (rol) => ['Mecánico', 'Jefe', 'Gerencia'].includes(rol),
+  verDashboard:     (rol) => ['Jefe', 'Gerencia'].includes(rol),
   verTodosDepositos:(rol) => rol === 'Gerencia',
 
   // mantenimiento edilicio
-  gestionarCotizaciones: (rol) => ['Mecánico', 'Supervisor', 'Gerencia'].includes(rol),
+  gestionarCotizaciones: (rol) => ['Mecánico', 'Jefe', 'Gerencia'].includes(rol),
   aprobarEdilicio:       (rol) => rol === 'Gerencia',
-  ejecutarCerrarEdilicio:(rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  ejecutarCerrarEdilicio:(rol) => ['Jefe', 'Gerencia'].includes(rol),
 
   // rrhh
-  registrarCapacitacion:   (rol) => ['Supervisor', 'Gerencia'].includes(rol),
-  generarCompensatorio:    (rol) => ['EM', 'Supervisor', 'Gerencia'].includes(rol),
-  aprobarSolicitudRRHH:    (rol) => ['Supervisor', 'Gerencia'].includes(rol), // HHEE, compensatorios, vacaciones
+  registrarCapacitacion:   (rol) => ['Jefe', 'Gerencia'].includes(rol),
+  generarCompensatorio:    (rol) => ['EM', 'Jefe', 'Gerencia'].includes(rol),
+  aprobarSolicitudRRHH:    (rol) => ['Jefe', 'Gerencia'].includes(rol), // HHEE, compensatorios, vacaciones
   asignarVacaciones:       (rol) => ['EM', 'Gerencia'].includes(rol),
   verInformeRRHH:          (rol) => rol === 'Gerencia',
-  verCierreHHEE:           (rol) => ['Supervisor', 'Gerencia'].includes(rol),
+  verCierreHHEE:           (rol) => ['Jefe', 'Gerencia'].includes(rol),
   gestionarEquipo:         (rol) => rol === 'Gerencia',
 };

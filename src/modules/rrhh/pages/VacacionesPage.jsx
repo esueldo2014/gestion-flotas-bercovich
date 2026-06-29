@@ -20,7 +20,7 @@ export default function VacacionesPage() {
   const verTodo = puedeAprobar;
   const esEM = role?.rol === 'EM';
   const gestionaPersonal = esEM || verTodo;
-  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
+  const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
   const anioActual = new Date().getFullYear();
 
   const [solicitudes, setSolicitudes] = useState([]);

@@ -15,7 +15,7 @@ export default function CompensatoriosPage() {
   const verTodo = puedeAprobar;
   const esEM = role?.rol === 'EM';
   const gestionaPersonal = esEM || verTodo;
-  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
+  const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
 
   const [movimientos, setMovimientos] = useState([]);
   const [saldos, setSaldos]           = useState([]);

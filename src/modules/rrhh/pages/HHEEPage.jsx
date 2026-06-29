@@ -19,7 +19,7 @@ export default function HHEEPage() {
   const verTodo = puedeAprobar;
   const esEM = role?.rol === 'EM';
   const gestionaPersonal = esEM || verTodo;
-  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
+  const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
 
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);

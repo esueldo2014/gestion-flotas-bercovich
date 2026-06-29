@@ -18,7 +18,7 @@ export default function CorrectivosPage() {
   const esEM = role?.rol === 'EM';
   const esMecanico = role?.rol === 'Mecánico';
   const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
-  const scopeProvincia = role?.rol === 'Supervisor' && role?.provincia_alcance ? role.provincia_alcance : null;
+  const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
   const [correctivos, setCorrectivos] = useState([]);
   const [machines, setMachines]       = useState([]);
   const [depositos, setDepositos]     = useState([]);
