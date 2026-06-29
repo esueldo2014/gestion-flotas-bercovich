@@ -24,6 +24,7 @@ export default function HHEEPage() {
   const [registros, setRegistros] = useState([]);
   const [usuarios, setUsuarios]   = useState([]);
   const [personal, setPersonal]   = useState([]);
+  const [controladores, setControladores] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [form, setForm] = useState({ target:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
   const [saving, setSaving] = useState(false);
@@ -53,6 +54,17 @@ export default function HHEEPage() {
     let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
     if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
+    // a todos los EM de Tucumán se les permite cargar HHEE también a los Controladores
+    let ctrl = [];
+    if (esEM && !verTodo) {
+      const { data: misuc } = await supabase.from('sucursales').select('provincia').eq('id', role.deposito_id).maybeSingle();
+      if (misuc?.provincia === 'T') {
+        const { data: ctrlData } = await supabase.from('personal')
+          .select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true).eq('funcion', 'Controlador');
+        ctrl = ctrlData ?? [];
+      }
+    }
+
     const [hheeRes, usRes, persRes] = await Promise.all([
       supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha', { ascending:false }),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
@@ -75,7 +87,7 @@ export default function HHEEPage() {
         ? hhee.filter(r => sucursalIdsScope.has(r.usuarios_roles?.deposito_id) || sucursalIdsScope.has(r.personal?.deposito_id))
         : hhee;
     } else if (esEM) {
-      const idsPersonal = new Set(pers.map(p => p.id));
+      const idsPersonal = new Set([...pers.map(p => p.id), ...ctrl.map(c => c.id)]);
       filtrados = hhee.filter(r => r.usuario_id === role.id || idsPersonal.has(r.personal_id));
     } else {
       filtrados = hhee.filter(r => r.usuario_id === role.id);
@@ -84,8 +96,9 @@ export default function HHEEPage() {
     setRegistros(filtrados);
     setUsuarios(us);
     setPersonal(pers);
+    setControladores(ctrl);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id]);
+  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id, role?.deposito_id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -159,6 +172,11 @@ export default function HHEEPage() {
             {personal.length > 0 && (
               <optgroup label="Personal / Maestranza">
                 {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+              </optgroup>
+            )}
+            {controladores.length > 0 && (
+              <optgroup label="Controladores">
+                {controladores.map(c => <option key={c.id} value={`p:${c.id}`}>{c.nombre}</option>)}
               </optgroup>
             )}
             {verTodo && usuarios.length > 0 && (
