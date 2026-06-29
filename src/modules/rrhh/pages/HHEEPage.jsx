@@ -16,9 +16,11 @@ const CATEGORIAS = [
 export default function HHEEPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
-  const verTodo = puedeAprobar;
+  const esJefeEquipo = role?.rol === 'Jefe' && !role?.provincia_alcance; // Jefe sin alcance de provincia: solo su equipo
+  const verTodo = puedeAprobar && !esJefeEquipo;
   const esEM = role?.rol === 'EM';
-  const gestionaPersonal = esEM || verTodo;
+  const teamScoped = esEM || esJefeEquipo;
+  const gestionaPersonal = teamScoped || verTodo;
   const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
 
   const [registros, setRegistros] = useState([]);
@@ -36,7 +38,7 @@ export default function HHEEPage() {
     setLoading(true);
 
     let depositosIds = null;
-    if (esEM && !verTodo) {
+    if (teamScoped) {
       const { data: asig } = await supabase.from('usuarios_depositos').select('deposito_id').eq('usuario_id', role.id);
       depositosIds = (asig ?? []).map(a => a.deposito_id);
     }
@@ -47,8 +49,8 @@ export default function HHEEPage() {
       sucursalIdsScope = new Set((sucs ?? []).map(s => s.id));
     }
 
-    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true);
-    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id, funcion').eq('activo', true);
+    if (teamScoped) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
     if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
@@ -56,7 +58,7 @@ export default function HHEEPage() {
 
     // a todos los EM de Tucumán se les permite cargar HHEE también a los Controladores
     let ctrl = [];
-    if (esEM && !verTodo) {
+    if (esEM) {
       const { data: misuc } = await supabase.from('sucursales').select('provincia').eq('id', role.deposito_id).maybeSingle();
       if (misuc?.provincia === 'T') {
         const { data: ctrlData } = await supabase.from('personal')
@@ -66,7 +68,7 @@ export default function HHEEPage() {
     }
 
     const [hheeRes, usRes, persRes] = await Promise.all([
-      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha', { ascending:false }),
+      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id, funcion)').order('fecha', { ascending:false }),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
       gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
@@ -86,7 +88,7 @@ export default function HHEEPage() {
       filtrados = sucursalIdsScope
         ? hhee.filter(r => sucursalIdsScope.has(r.usuarios_roles?.deposito_id) || sucursalIdsScope.has(r.personal?.deposito_id))
         : hhee;
-    } else if (esEM) {
+    } else if (teamScoped) {
       const idsPersonal = new Set([...pers.map(p => p.id), ...ctrl.map(c => c.id)]);
       filtrados = hhee.filter(r => r.usuario_id === role.id || idsPersonal.has(r.personal_id));
     } else {
@@ -98,7 +100,7 @@ export default function HHEEPage() {
     setPersonal(pers);
     setControladores(ctrl);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id, role?.deposito_id]);
+  }, [verTodo, esEM, teamScoped, gestionaPersonal, scopeProvincia, role?.id, role?.deposito_id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -155,11 +157,19 @@ export default function HHEEPage() {
     return r.personal?.nombre || r.usuarios_roles?.nombre || r.usuarios_roles?.email || '—';
   }
 
+  // agrupar el personal por función (Analista/Controlador) cuando esté cargada; sino, un solo grupo
+  const FUNCION_LABEL = { Analista: 'Analistas', Controlador: 'Controladores' };
+  const gruposPersonal = personal.reduce((acc, p) => {
+    const key = FUNCION_LABEL[p.funcion] || 'Personal / Maestranza';
+    (acc[key] ??= []).push(p);
+    return acc;
+  }, {});
+
   return (
     <div style={styles.page} className="page-padding">
       <div style={styles.header}>
         <h1 style={styles.title}>Horas extra</h1>
-        <p style={styles.subtitle}>{verTodo ? 'Todas las solicitudes' : esEM ? 'Tuyas y de tu equipo' : 'Tus horas extra cargadas'}</p>
+        <p style={styles.subtitle}>{verTodo ? 'Todas las solicitudes' : teamScoped ? 'Tuyas y de tu equipo' : 'Tus horas extra cargadas'}</p>
       </div>
 
       {error && <p style={styles.error}>{error}</p>}
@@ -169,11 +179,11 @@ export default function HHEEPage() {
           <select value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
             {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
-            {personal.length > 0 && (
-              <optgroup label="Personal / Maestranza">
-                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+            {Object.entries(gruposPersonal).map(([grupo, lista]) => (
+              <optgroup key={grupo} label={grupo}>
+                {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
               </optgroup>
-            )}
+            ))}
             {controladores.length > 0 && (
               <optgroup label="Controladores">
                 {controladores.map(c => <option key={c.id} value={`p:${c.id}`}>{c.nombre}</option>)}
@@ -222,7 +232,7 @@ export default function HHEEPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo || esEM ? ['Empleado'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo || teamScoped ? ['Empleado'] : []), ...(teamScoped ? ['Función'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -232,7 +242,8 @@ export default function HHEEPage() {
                 const col = ESTADO_COLORS[r.estado] ?? {};
                 return (
                   <tr key={r.id} style={styles.tr}>
-                    {(verTodo || esEM) && <td style={styles.td}>{nombreDe(r)}</td>}
+                    {(verTodo || teamScoped) && <td style={styles.td}>{nombreDe(r)}</td>}
+                    {teamScoped && <td style={styles.td}>{r.personal?.funcion || '—'}</td>}
                     <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{r.tipo || '—'}</td>
                     <td style={styles.td}>{r.categoria || '—'}</td>

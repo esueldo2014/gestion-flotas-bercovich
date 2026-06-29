@@ -12,9 +12,11 @@ export default function CompensatoriosPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const puedeGenerar = can.generarCompensatorio(role?.rol);
-  const verTodo = puedeAprobar;
+  const esJefeEquipo = role?.rol === 'Jefe' && !role?.provincia_alcance; // Jefe sin alcance de provincia: solo su equipo
+  const verTodo = puedeAprobar && !esJefeEquipo;
   const esEM = role?.rol === 'EM';
-  const gestionaPersonal = esEM || verTodo;
+  const teamScoped = esEM || esJefeEquipo;
+  const gestionaPersonal = teamScoped || verTodo;
   const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
 
   const [movimientos, setMovimientos] = useState([]);
@@ -31,7 +33,7 @@ export default function CompensatoriosPage() {
     setLoading(true);
 
     let depositosIds = null;
-    if (esEM && !verTodo) {
+    if (teamScoped) {
       const { data: asig } = await supabase.from('usuarios_depositos').select('deposito_id').eq('usuario_id', role.id);
       depositosIds = (asig ?? []).map(a => a.deposito_id);
     }
@@ -42,15 +44,15 @@ export default function CompensatoriosPage() {
       sucursalIdsScope = new Set((sucs ?? []).map(s => s.id));
     }
 
-    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true);
-    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id, funcion').eq('activo', true);
+    if (teamScoped) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
     if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
     if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     const [movRes, salRes, usRes, persRes] = await Promise.all([
-      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha', { ascending:false }),
+      supabase.from('dias_compensatorios_movimientos').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id, funcion)').order('fecha', { ascending:false }),
       supabase.from('dias_compensatorios_saldo').select('*'),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
       gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
@@ -71,7 +73,7 @@ export default function CompensatoriosPage() {
       filtrados = sucursalIdsScope
         ? mov.filter(m => sucursalIdsScope.has(m.usuarios_roles?.deposito_id) || sucursalIdsScope.has(m.personal?.deposito_id))
         : mov;
-    } else if (esEM) {
+    } else if (teamScoped) {
       const idsPersonal = new Set(pers.map(p => p.id));
       filtrados = mov.filter(m => m.usuario_id === role.id || idsPersonal.has(m.personal_id));
     } else {
@@ -83,7 +85,7 @@ export default function CompensatoriosPage() {
     setUsuarios(us);
     setPersonal(pers);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id]);
+  }, [verTodo, esEM, teamScoped, gestionaPersonal, scopeProvincia, role?.id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -190,6 +192,14 @@ export default function CompensatoriosPage() {
     return m.personal?.nombre || m.usuarios_roles?.nombre || m.usuarios_roles?.email || '—';
   }
 
+  // agrupar el personal por función (Analista/Controlador) cuando esté cargada; sino, un solo grupo
+  const FUNCION_LABEL = { Analista: 'Analistas', Controlador: 'Controladores' };
+  const gruposPersonal = personal.reduce((acc, p) => {
+    const key = FUNCION_LABEL[p.funcion] || 'Personal / Maestranza';
+    (acc[key] ??= []).push(p);
+    return acc;
+  }, {});
+
   return (
     <div style={styles.page} className="page-padding">
       <div style={styles.header}>
@@ -205,11 +215,11 @@ export default function CompensatoriosPage() {
           <select value={formUso.target} onChange={e => setFormUso(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
             {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
-            {personal.length > 0 && (
-              <optgroup label="Personal / Maestranza">
-                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+            {Object.entries(gruposPersonal).map(([grupo, lista]) => (
+              <optgroup key={grupo} label={grupo}>
+                {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
               </optgroup>
-            )}
+            ))}
             {verTodo && usuarios.length > 0 && (
               <optgroup label="Empleados">
                 {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
@@ -232,11 +242,11 @@ export default function CompensatoriosPage() {
           <select value={formGen.target} onChange={e => setFormGen(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
             {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
-            {personal.length > 0 && (
-              <optgroup label="Personal / Maestranza">
-                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+            {Object.entries(gruposPersonal).map(([grupo, lista]) => (
+              <optgroup key={grupo} label={grupo}>
+                {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
               </optgroup>
-            )}
+            ))}
             {verTodo && usuarios.length > 0 && (
               <optgroup label="Empleados">
                 {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
@@ -257,7 +267,7 @@ export default function CompensatoriosPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo || esEM ? ['Empleado'] : []), 'Tipo','Fecha','Días','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo || teamScoped ? ['Empleado'] : []), ...(teamScoped ? ['Función'] : []), 'Tipo','Fecha','Días','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -267,7 +277,8 @@ export default function CompensatoriosPage() {
                 const col = ESTADO_COLORS[m.estado] ?? {};
                 return (
                   <tr key={m.id} style={styles.tr}>
-                    {(verTodo || esEM) && <td style={styles.td}>{nombreDe(m)}</td>}
+                    {(verTodo || teamScoped) && <td style={styles.td}>{nombreDe(m)}</td>}
+                    {teamScoped && <td style={styles.td}>{m.personal?.funcion || '—'}</td>}
                     <td style={styles.td}>{m.tipo === 'generado' ? 'Generado' : 'Uso'}</td>
                     <td style={styles.td}>{new Date(m.fecha).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{m.dias}</td>
