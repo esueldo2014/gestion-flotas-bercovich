@@ -17,9 +17,11 @@ export default function VacacionesPage() {
   const role = useRole();
   const puedeAprobar = can.aprobarSolicitudRRHH(role?.rol);
   const puedeAsignar = can.asignarVacaciones(role?.rol);
-  const verTodo = puedeAprobar;
+  const esJefeEquipo = role?.rol === 'Jefe' && !role?.provincia_alcance; // Jefe sin alcance de provincia: solo su equipo
+  const verTodo = puedeAprobar && !esJefeEquipo;
   const esEM = role?.rol === 'EM';
-  const gestionaPersonal = esEM || verTodo;
+  const teamScoped = esEM || esJefeEquipo;
+  const gestionaPersonal = teamScoped || verTodo;
   const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
   const anioActual = new Date().getFullYear();
 
@@ -37,7 +39,7 @@ export default function VacacionesPage() {
     setLoading(true);
 
     let depositosIds = null;
-    if (esEM && !verTodo) {
+    if (teamScoped) {
       const { data: asig } = await supabase.from('usuarios_depositos').select('deposito_id').eq('usuario_id', role.id);
       depositosIds = (asig ?? []).map(a => a.deposito_id);
     }
@@ -48,15 +50,15 @@ export default function VacacionesPage() {
       sucursalIdsScope = new Set((sucs ?? []).map(s => s.id));
     }
 
-    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id').eq('activo', true);
-    if (esEM && !verTodo) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
+    let personalQuery = supabase.from('personal').select('id, nombre, rubro_deposito_id, deposito_id, funcion').eq('activo', true);
+    if (teamScoped) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
     if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
     if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
-    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id)').order('fecha_desde', { ascending:false });
-    if (!verTodo && !esEM) solQuery = solQuery.eq('usuario_id', role.id);
+    let solQuery = supabase.from('vacaciones_solicitudes').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id, funcion)').order('fecha_desde', { ascending:false });
+    if (!verTodo && !teamScoped) solQuery = solQuery.eq('usuario_id', role.id);
 
     const [solRes, asigRes, usRes, persRes] = await Promise.all([
       solQuery,
@@ -72,19 +74,25 @@ export default function VacacionesPage() {
 
     let sol = solRes.data ?? [];
     const pers = persRes.data ?? [];
-    if (esEM && !verTodo) {
+    if (teamScoped) {
       const idsPersonal = new Set(pers.map(p => p.id));
       sol = sol.filter(s => s.usuario_id === role.id || idsPersonal.has(s.personal_id));
     } else if (verTodo && sucursalIdsScope) {
       sol = sol.filter(s => sucursalIdsScope.has(s.usuarios_roles?.deposito_id) || sucursalIdsScope.has(s.personal?.deposito_id));
     }
 
+    let asigData = asigRes.data ?? [];
+    if (teamScoped) {
+      const idsPersonal = new Set(pers.map(p => p.id));
+      asigData = asigData.filter(a => a.usuario_id === role.id || idsPersonal.has(a.personal_id));
+    }
+
     setSolicitudes(sol);
-    setAsignaciones(asigRes.data ?? []);
+    setAsignaciones(asigData);
     setUsuarios(usRes.data ?? []);
     setPersonal(pers);
     setLoading(false);
-  }, [verTodo, esEM, gestionaPersonal, scopeProvincia, role?.id, anioActual]);
+  }, [verTodo, esEM, teamScoped, gestionaPersonal, scopeProvincia, role?.id, anioActual]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -190,6 +198,13 @@ export default function VacacionesPage() {
     return s.personal?.nombre || s.usuarios_roles?.nombre || s.usuarios_roles?.email || '—';
   }
 
+  const FUNCION_LABEL = { Analista: 'Analistas', Controlador: 'Controladores' };
+  const gruposPersonal = personal.reduce((acc, p) => {
+    const key = FUNCION_LABEL[p.funcion] || 'Personal / Maestranza';
+    (acc[key] ??= []).push(p);
+    return acc;
+  }, {});
+
   return (
     <div style={styles.page} className="page-padding">
       <div style={styles.header}>
@@ -207,11 +222,11 @@ export default function VacacionesPage() {
           <select value={formSol.target} onChange={e => setFormSol(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
             {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
-            {personal.length > 0 && (
-              <optgroup label="Personal / Maestranza">
-                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+            {Object.entries(gruposPersonal).map(([grupo, lista]) => (
+              <optgroup key={grupo} label={grupo}>
+                {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
               </optgroup>
-            )}
+            ))}
             {verTodo && usuarios.length > 0 && (
               <optgroup label="Empleados">
                 {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
@@ -230,11 +245,11 @@ export default function VacacionesPage() {
           <span style={styles.formLabel}>Asignar días {anioActual}:</span>
           <select value={formAsig.target} onChange={e => setFormAsig(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
-            {personal.length > 0 && (
-              <optgroup label="Personal / Maestranza">
-                {personal.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+            {Object.entries(gruposPersonal).map(([grupo, lista]) => (
+              <optgroup key={grupo} label={grupo}>
+                {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
               </optgroup>
-            )}
+            ))}
             {usuarios.length > 0 && (
               <optgroup label="Empleados">
                 {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
@@ -246,6 +261,31 @@ export default function VacacionesPage() {
         </form>
       )}
 
+      {puedeAsignar && asignaciones.length > 0 && (
+        <div style={styles.tableWrap}>
+          <h3 style={styles.sectionTitle}>Días asignados {anioActual}</h3>
+          <table style={styles.table}>
+            <thead>
+              <tr><th style={styles.th}>Empleado</th><th style={styles.th}>Asignados</th><th style={styles.th}>Usados/pendientes</th><th style={styles.th}>Disponibles</th></tr>
+            </thead>
+            <tbody>
+              {asignaciones.map(a => {
+                const target = a.personal_id ? `p:${a.personal_id}` : `u:${a.usuario_id}`;
+                const usado = diasUsadosOPendientes(target);
+                return (
+                  <tr key={a.id} style={styles.tr}>
+                    <td style={styles.td}>{nombreDeTarget(target) || '—'}</td>
+                    <td style={styles.td}>{a.dias_asignados}</td>
+                    <td style={styles.td}>{usado}</td>
+                    <td style={styles.td}>{a.dias_asignados - usado}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {loading ? <p style={styles.info}>Cargando...</p> : solicitudes.length === 0 ? (
         <div style={styles.empty}>Sin solicitudes.</div>
       ) : (
@@ -253,7 +293,7 @@ export default function VacacionesPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo || esEM ? ['Empleado'] : []), 'Desde','Hasta','Días','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo || teamScoped ? ['Empleado'] : []), ...(teamScoped ? ['Función'] : []), 'Desde','Hasta','Días','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -263,7 +303,8 @@ export default function VacacionesPage() {
                 const col = ESTADO_COLORS[s.estado] ?? {};
                 return (
                   <tr key={s.id} style={styles.tr}>
-                    {(verTodo || esEM) && <td style={styles.td}>{nombreDe(s)}</td>}
+                    {(verTodo || teamScoped) && <td style={styles.td}>{nombreDe(s)}</td>}
+                    {teamScoped && <td style={styles.td}>{s.personal?.funcion || '—'}</td>}
                     <td style={styles.td}>{new Date(s.fecha_desde).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{new Date(s.fecha_hasta).toLocaleDateString('es-AR')}</td>
                     <td style={styles.td}>{s.dias}</td>
@@ -300,6 +341,7 @@ const styles = {
   input: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14 },
   btnNew: { background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'10px 20px', fontSize:14, fontWeight:600, cursor:'pointer' },
   tableWrap: { overflowX:'auto', marginTop:20 },
+  sectionTitle: { fontSize:15, fontWeight:700, color:'#1a1a2e', margin:'0 0 8px' },
   table: { width:'100%', borderCollapse:'collapse', fontSize:13 },
   th: { textAlign:'left', padding:'9px 12px', background:'#f1f5f9', color:'#374151', fontWeight:700, borderBottom:'2px solid #e2e8f0', whiteSpace:'nowrap' },
   tr: { borderBottom:'1px solid #f0f0f0' },
