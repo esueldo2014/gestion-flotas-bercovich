@@ -218,7 +218,7 @@ export default function CorrectivosPage() {
           verCostos={verCostos}
           soloLectura={editing && !puedeGestionar}
           onSave={handleSave}
-          onCancel={() => { setShowForm(false); setEditing(null); }}
+          onCancel={() => { setShowForm(false); setEditing(null); fetchAll(); }}
         />
       )}
     </div>
