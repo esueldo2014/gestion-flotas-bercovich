@@ -62,6 +62,10 @@ export default function AdjuntosPanel({ correctivoId }) {
 
   async function handleEliminar(a) {
     if (!window.confirm(`¿Eliminar "${a.nombre_archivo}"?`)) return;
+    const storagePath = a.url.split('/correctivos-adjuntos/')[1];
+    if (storagePath) {
+      await supabase.storage.from('correctivos-adjuntos').remove([storagePath]);
+    }
     await supabase.from('correctivos_adjuntos').delete().eq('id', a.id);
     await fetchAdjuntos();
   }

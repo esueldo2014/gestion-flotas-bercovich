@@ -20,6 +20,7 @@ export default function CorrectivosPage() {
   const scopeSucursal = (esEM || esMecanico) ? role?.deposito_id : null;
   const scopeProvincia = role?.rol === 'Jefe' && role?.provincia_alcance ? role.provincia_alcance : null;
   const [correctivos, setCorrectivos] = useState([]);
+  const [fotoMap, setFotoMap]         = useState({});
   const [machines, setMachines]       = useState([]);
   const [depositos, setDepositos]     = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -32,14 +33,18 @@ export default function CorrectivosPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: corr }, { data: maq }, { data: dep }] = await Promise.all([
+    const [{ data: corr }, { data: maq }, { data: dep }, { data: fotos }] = await Promise.all([
       supabase.from('correctivos').select('*, maquinas(numero_interno, marca, modelo, tipo)').order('fecha_reporte', { ascending: false }),
       supabase.from('maquinas').select('*').order('numero_interno'),
       supabase.from('sucursales').select('*').order('code'),
+      supabase.from('correctivos_adjuntos').select('correctivo_id, url').eq('tipo', 'Foto de la rotura'),
     ]);
     setCorrectivos(corr ?? []);
     setMachines(maq ?? []);
     setDepositos(dep ?? []);
+    const map = {};
+    for (const f of fotos ?? []) { if (!map[f.correctivo_id]) map[f.correctivo_id] = f.url; }
+    setFotoMap(map);
     setLoading(false);
   }, []);
 
@@ -81,6 +86,17 @@ export default function CorrectivosPage() {
 
   async function handleEliminar(c) {
     if (!window.confirm('¿Eliminar esta orden de trabajo?')) return;
+    const { data: adjuntos } = await supabase
+      .from('correctivos_adjuntos')
+      .select('url')
+      .eq('correctivo_id', c.id);
+    if (adjuntos?.length) {
+      const paths = adjuntos
+        .map(a => a.url.split('/correctivos-adjuntos/')[1])
+        .filter(Boolean);
+      if (paths.length) await supabase.storage.from('correctivos-adjuntos').remove(paths);
+      await supabase.from('correctivos_adjuntos').delete().eq('correctivo_id', c.id);
+    }
     await supabase.from('correctivos').delete().eq('id', c.id);
     await fetchAll();
   }
@@ -149,7 +165,7 @@ export default function CorrectivosPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Estado','Máquina','Descripción','Categoría','Reportado','Asignado', ...(verCostos ? ['Costo'] : []), 'Fecha reporte','Acciones'].map(h => (
+                {['Estado','Máquina','Descripción','Categoría','Reportado','Asignado', ...(verCostos ? ['Costo'] : []), 'Fecha reporte','Acciones','Foto'].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -181,6 +197,11 @@ export default function CorrectivosPage() {
                           <button onClick={() => handleEliminar(c)} style={styles.btnDel}>Eliminar</button>
                         </>
                       ) : '—'}
+                    </td>
+                    <td style={styles.td}>
+                      {fotoMap[c.id]
+                        ? <a href={fotoMap[c.id]} target="_blank" rel="noopener noreferrer" style={styles.btnFoto} title="Ver foto de la rotura">📷 Ver</a>
+                        : <span style={styles.sinFoto}>—</span>}
                     </td>
                   </tr>
                 );
@@ -223,6 +244,8 @@ const styles = {
   descText: { maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
   btnEdit: { marginRight:4, padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#e0f2fe', color:'#0369a1', border:'none', borderRadius:5, fontWeight:600 },
   btnDel: { padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#fee2e2', color:'#991b1b', border:'none', borderRadius:5, fontWeight:600 },
+  btnFoto: { padding:'4px 10px', fontSize:12, background:'#f0fdf4', color:'#166534', border:'1px solid #bbf7d0', borderRadius:5, fontWeight:600, textDecoration:'none', display:'inline-block' },
+  sinFoto: { color:'#94a3b8' },
   info: { color:'#94a3b8', textAlign:'center', padding:40 },
   empty: { textAlign:'center', padding:40, color:'#999', fontSize:15 },
 };
