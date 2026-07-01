@@ -42,7 +42,7 @@ const NAV_RRHH = [
 ];
 
 const MODULOS = [
-  { id:'mantenimiento', label:'Mantenimiento', nav: NAV_MANTENIMIENTO },
+  { id:'mantenimiento', label:'Mantenimiento', nav: NAV_MANTENIMIENTO, show: (rol) => rol !== 'Administracion' },
   { id:'rrhh',          label:'RRHH',          nav: NAV_RRHH },
 ];
 
@@ -64,6 +64,7 @@ export default function App() {
       .eq('id', currentUser.id)
       .single();
     setRole(data ?? null);
+    if (data?.rol === 'Administracion') setModulo('rrhh');
   }, []);
 
   useEffect(() => {
@@ -118,7 +119,7 @@ export default function App() {
     );
   }
 
-  const modulosConNav = MODULOS.map(m => ({ ...m, nav: m.nav.filter(n => n.show(role.rol)) }));
+  const modulosConNav = MODULOS.filter(m => !m.show || m.show(role.rol)).map(m => ({ ...m, nav: m.nav.filter(n => n.show(role.rol)) }));
   const moduloActual = modulosConNav.find(m => m.id === modulo) ?? modulosConNav[0];
   const visibleNav = moduloActual.nav;
   // si la página actual no es visible para este rol/módulo, mostrar la primera disponible
