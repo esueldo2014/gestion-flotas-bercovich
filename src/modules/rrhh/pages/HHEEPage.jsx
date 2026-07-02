@@ -178,7 +178,7 @@ export default function HHEEPage() {
         {gestionaPersonal && (
           <select value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
             <option value="">¿Para quién?</option>
-            {!verTodo && <option value={`u:${role.id}`}>Para mí</option>}
+            <option value={`u:${role.id}`}>Para mí</option>
             {Object.entries(gruposPersonal).map(([grupo, lista]) => (
               <optgroup key={grupo} label={grupo}>
                 {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
