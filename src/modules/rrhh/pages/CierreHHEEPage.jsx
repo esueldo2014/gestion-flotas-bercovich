@@ -37,7 +37,7 @@ export default function CierreHHEEPage() {
 
     const { data, error: err } = await supabase
       .from('hhee')
-      .select('*, usuarios_roles!usuario_id(nombre, email, legajo), personal(nombre, legajo)')
+      .select('*, usuarios_roles!usuario_id(nombre, email, legajo, sucursales(nombre)), personal(nombre, legajo, sucursales(nombre))')
       .eq('estado', 'aprobada')
       .gte('fecha', desde)
       .lte('fecha', hasta)
@@ -73,6 +73,7 @@ export default function CierreHHEEPage() {
       porEmpleado[key] = {
         nombre: r.personal?.nombre || r.usuarios_roles?.nombre || r.usuarios_roles?.email || 'Sin nombre',
         legajo: r.personal?.legajo || r.usuarios_roles?.legajo || null,
+        sucursal: r.personal?.sucursales?.nombre || r.usuarios_roles?.sucursales?.nombre || null,
         horas50: 0, horas100: 0,
         horas50Inv: 0, horas100Inv: 0,
         categorias: new Set(), categoriasInv: new Set(),
@@ -123,13 +124,13 @@ export default function CierreHHEEPage() {
 
   function descargarExcel() {
     const filasCsv = [
-      ['Legajo', 'Empleado', 'HS EXT 50%', 'HS EXT 100%', 'INVENTARIO 50%', 'INVENTARIO 100%', 'TOTAL $', 'Observaciones'],
+      ['Legajo', 'Empleado', 'Sucursal', 'HS EXT 50%', 'HS EXT 100%', 'INVENTARIO 50%', 'INVENTARIO 100%', 'TOTAL $', 'Observaciones'],
       ...filas.map(f => [
-        f.legajo || '—', f.nombre, money(f.monto50), money(f.monto100), money(f.monto50Inv), money(f.monto100Inv),
+        f.legajo || '—', f.nombre, f.sucursal || '—', money(f.monto50), money(f.monto100), money(f.monto50Inv), money(f.monto100Inv),
         money(f.monto50 + f.monto100 + f.monto50Inv + f.monto100Inv),
         [f.observaciones, f.observacionesInv].filter(Boolean).join(' + '),
       ]),
-      ['', 'TOTAL', money(totalMonto50), money(totalMonto100), money(totalMonto50Inv), money(totalMonto100Inv), money(totalGeneral), ''],
+      ['', 'TOTAL', '', money(totalMonto50), money(totalMonto100), money(totalMonto50Inv), money(totalMonto100Inv), money(totalGeneral), ''],
       [],
       ['Valor hora 50%', money(tarifa50)],
       ['Valor hora 100%', money(tarifa100)],
@@ -193,6 +194,7 @@ export default function CierreHHEEPage() {
                 <tr>
                   <th style={styles.th} rowSpan={2}>Legajo</th>
                   <th style={styles.th} rowSpan={2}>Empleado</th>
+                  <th style={styles.th} rowSpan={2}>Sucursal</th>
                   <th style={styles.th} colSpan={3}>HS EXT</th>
                   <th style={styles.th} colSpan={3}>INVENTARIO</th>
                   <th style={styles.th} rowSpan={2}>TOTAL $</th>
@@ -208,6 +210,7 @@ export default function CierreHHEEPage() {
                   <tr key={f.nombre} style={styles.tr}>
                     <td style={{ ...styles.td, color:'#64748b', fontSize:12 }}>{f.legajo || '—'}</td>
                     <td style={{ ...styles.td, fontWeight:700 }}>{f.nombre}</td>
+                    <td style={{ ...styles.td, color:'#64748b', fontSize:12 }}>{f.sucursal || '—'}</td>
                     <td style={styles.td}>{f.horas50}</td>
                     <td style={styles.td}>{f.horas100}</td>
                     <td style={styles.td}>${money(f.monto50 + f.monto100)}</td>
@@ -221,6 +224,7 @@ export default function CierreHHEEPage() {
                 <tr style={styles.trTotal}>
                   <td style={styles.td}></td>
                   <td style={styles.td}>TOTAL</td>
+                  <td style={styles.td}></td>
                   <td style={styles.td}>{totalHoras50}</td>
                   <td style={styles.td}>{totalHoras100}</td>
                   <td style={styles.td}>${money(totalMonto50 + totalMonto100)}</td>
