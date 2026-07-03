@@ -53,7 +53,7 @@ export default function HHEEPage() {
     if (teamScoped) personalQuery = personalQuery.in('rubro_deposito_id', depositosIds.length ? depositosIds : [-1]);
     if (sucursalIdsScope) personalQuery = personalQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
-    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id');
+    let usQuery = supabase.from('usuarios_roles').select('id, nombre, email, deposito_id, legajo');
     if (sucursalIdsScope) usQuery = usQuery.in('deposito_id', Array.from(sucursalIdsScope));
 
     // a todos los EM de Tucumán se les permite cargar HHEE también a los Controladores
@@ -68,7 +68,7 @@ export default function HHEEPage() {
     }
 
     const [hheeRes, usRes, persRes] = await Promise.all([
-      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id), personal(nombre, deposito_id, funcion)').order('fecha', { ascending:false }),
+      supabase.from('hhee').select('*, usuarios_roles!usuario_id(nombre, email, deposito_id, legajo), personal(nombre, deposito_id, funcion, legajo)').order('fecha', { ascending:false }),
       verTodo ? usQuery : Promise.resolve({ data: [] }),
       gestionaPersonal ? personalQuery : Promise.resolve({ data: [] }),
     ]);
@@ -232,7 +232,7 @@ export default function HHEEPage() {
           <table style={styles.table}>
             <thead>
               <tr>
-                {[...(verTodo || teamScoped ? ['Empleado'] : []), ...(teamScoped ? ['Función'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
+                {[...(verTodo || teamScoped ? ['Legajo','Empleado'] : []), ...(teamScoped ? ['Función'] : []), 'Fecha','Tipo','Categoría','Horas','Motivo','Estado', ...(puedeAprobar ? ['Acciones'] : [])].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -242,6 +242,7 @@ export default function HHEEPage() {
                 const col = ESTADO_COLORS[r.estado] ?? {};
                 return (
                   <tr key={r.id} style={styles.tr}>
+                    {(verTodo || teamScoped) && <td style={{ ...styles.td, color:'#64748b', fontSize:12 }}>{r.personal?.legajo || r.usuarios_roles?.legajo || '—'}</td>}
                     {(verTodo || teamScoped) && <td style={styles.td}>{nombreDe(r)}</td>}
                     {teamScoped && <td style={styles.td}>{r.personal?.funcion || '—'}</td>}
                     <td style={styles.td}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
