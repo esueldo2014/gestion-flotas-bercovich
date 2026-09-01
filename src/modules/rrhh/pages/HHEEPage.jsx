@@ -28,11 +28,12 @@ export default function HHEEPage() {
   const [personal, setPersonal]   = useState([]);
   const [controladores, setControladores] = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [form, setForm] = useState({ target:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
+  const [form, setForm] = useState({ target:'', fecha:'', horas50:'', horas100:'', categoria:'', motivo:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
   const [filterCategoria, setFilterCategoria] = useState('');
+  const [editando, setEditando] = useState(null); // registro en edición inline
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -105,15 +106,14 @@ export default function HHEEPage() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   function handleFechaChange(fecha) {
-    const dia = fecha ? new Date(fecha + 'T00:00:00').getDay() : null; // 0=domingo, 6=sabado
-    const tipoSugerido = dia === 0 ? '100%' : '50%';
-    setForm(f => ({ ...f, fecha, tipo: tipoSugerido }));
+    setForm(f => ({ ...f, fecha }));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (!form.fecha || !form.horas) return;
+    if (!form.fecha) return;
+    if (!form.horas50 && !form.horas100) { setError('Ingresá al menos las horas al 50% o al 100%.'); return; }
     if (gestionaPersonal && !form.target) { setError('Elegí para quién es esta hora extra.'); return; }
     if (!form.categoria) { setError('Elegí una categoría.'); return; }
 
@@ -125,18 +125,15 @@ export default function HHEEPage() {
       usuario_id = role.id;
     }
 
+    const registros = [];
+    if (form.horas50) registros.push({ usuario_id, personal_id, fecha: form.fecha, tipo: '50%', categoria: form.categoria, horas: parseFloat(form.horas50), motivo: form.motivo || null });
+    if (form.horas100) registros.push({ usuario_id, personal_id, fecha: form.fecha, tipo: '100%', categoria: form.categoria, horas: parseFloat(form.horas100), motivo: form.motivo || null });
+
     setSaving(true);
-    const { error: err } = await supabase.from('hhee').insert({
-      usuario_id, personal_id,
-      fecha: form.fecha,
-      tipo: form.tipo,
-      categoria: form.categoria,
-      horas: parseFloat(form.horas),
-      motivo: form.motivo || null,
-    });
+    const { error: err } = await supabase.from('hhee').insert(registros);
     setSaving(false);
     if (err) { setError(err.message); return; }
-    setForm({ target:'', fecha:'', tipo:'50%', categoria:'', horas:'', motivo:'' });
+    setForm({ target:'', fecha:'', horas50:'', horas100:'', categoria:'', motivo:'' });
     await fetchAll();
   }
 
@@ -146,6 +143,28 @@ export default function HHEEPage() {
       aprobado_por: role.id,
       fecha_aprobacion: new Date().toISOString(),
     }).eq('id', r.id);
+    await fetchAll();
+  }
+
+  async function handleEliminar(r) {
+    if (!window.confirm('¿Eliminar este registro de horas extra?')) return;
+    await supabase.from('hhee').delete().eq('id', r.id);
+    await fetchAll();
+  }
+
+  async function handleGuardarEdicion(e) {
+    e.preventDefault();
+    setSaving(true);
+    const { error: err } = await supabase.from('hhee').update({
+      fecha: editando.fecha,
+      tipo: editando.tipo,
+      horas: parseFloat(editando.horas),
+      categoria: editando.categoria,
+      motivo: editando.motivo || null,
+    }).eq('id', editando.id);
+    setSaving(false);
+    if (err) { setError(err.message); return; }
+    setEditando(null);
     await fetchAll();
   }
 
@@ -197,19 +216,16 @@ export default function HHEEPage() {
           </select>
         )}
         <input type="date" value={form.fecha} onChange={e => handleFechaChange(e.target.value)} required style={styles.input} />
-        <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} style={styles.input}>
-          <option value="50%">50%</option>
-          <option value="100%">100%</option>
-        </select>
         <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} required style={styles.input}>
           <option value="">Categoría...</option>
           {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <input type="number" step="0.5" min="0" placeholder="Horas" value={form.horas} onChange={e => setForm(f => ({ ...f, horas: e.target.value }))} required style={styles.input} />
+        <input type="number" step="0.5" min="0" placeholder="Hs 50%" value={form.horas50} onChange={e => setForm(f => ({ ...f, horas50: e.target.value }))} style={{ ...styles.input, width:90 }} />
+        <input type="number" step="0.5" min="0" placeholder="Hs 100%" value={form.horas100} onChange={e => setForm(f => ({ ...f, horas100: e.target.value }))} style={{ ...styles.input, width:90 }} />
         <input type="text" placeholder="Motivo (opcional)" value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} style={{ ...styles.input, flex:1 }} />
         <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Cargar'}</button>
       </form>
-      <p style={styles.hint}>50%: hasta el sábado 13hs. 100%: desde el sábado 13hs hasta el domingo 24hs. El sistema sugiere el tipo según la fecha — revisalo si cargás un sábado.</p>
+      <p style={styles.hint}>Podés ingresar horas al 50%, al 100% o ambas en simultáneo — se guardan como registros separados. 50%: hasta el sábado 13hs. 100%: desde el sábado 13hs hasta el domingo 24hs.</p>
 
       <div style={styles.filters}>
         <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={styles.select}>
@@ -253,12 +269,16 @@ export default function HHEEPage() {
                     <td style={styles.td}><span style={{ ...styles.badge, background: col.bg, color: col.text }}>{r.estado}</span></td>
                     {puedeAprobar && (
                       <td style={styles.td}>
-                        {r.estado === 'pendiente' ? (
-                          <>
-                            <button onClick={() => handleDecision(r, 'aprobada')} style={styles.btnOk}>Aprobar</button>
-                            <button onClick={() => handleDecision(r, 'rechazada')} style={styles.btnDel}>Rechazar</button>
-                          </>
-                        ) : '—'}
+                        <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                          {r.estado === 'pendiente' && (
+                            <>
+                              <button onClick={() => handleDecision(r, 'aprobada')} style={styles.btnOk}>Aprobar</button>
+                              <button onClick={() => handleDecision(r, 'rechazada')} style={styles.btnDel}>Rechazar</button>
+                            </>
+                          )}
+                          <button onClick={() => setEditando({ ...r })} style={styles.btnEdit}>Editar</button>
+                          <button onClick={() => handleEliminar(r)} style={styles.btnElim}>Eliminar</button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -266,6 +286,40 @@ export default function HHEEPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {editando && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <h3 style={{ margin:'0 0 16px', fontSize:17, fontWeight:700 }}>Editar registro de HHEE</h3>
+            <form onSubmit={handleGuardarEdicion} style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <label style={styles.label}>Fecha
+                <input type="date" value={editando.fecha} onChange={e => setEditando(ed => ({ ...ed, fecha: e.target.value }))} required style={styles.input} />
+              </label>
+              <label style={styles.label}>Tipo
+                <select value={editando.tipo} onChange={e => setEditando(ed => ({ ...ed, tipo: e.target.value }))} style={styles.input}>
+                  <option value="50%">50%</option>
+                  <option value="100%">100%</option>
+                </select>
+              </label>
+              <label style={styles.label}>Horas
+                <input type="number" step="0.5" min="0" value={editando.horas} onChange={e => setEditando(ed => ({ ...ed, horas: e.target.value }))} required style={styles.input} />
+              </label>
+              <label style={styles.label}>Categoría
+                <select value={editando.categoria} onChange={e => setEditando(ed => ({ ...ed, categoria: e.target.value }))} required style={styles.input}>
+                  {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <label style={styles.label}>Motivo
+                <input type="text" value={editando.motivo || ''} onChange={e => setEditando(ed => ({ ...ed, motivo: e.target.value }))} style={styles.input} />
+              </label>
+              <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
+                <button type="button" onClick={() => setEditando(null)} style={styles.btnCancel}>Cancelar</button>
+                <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : 'Guardar'}</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
@@ -291,8 +345,14 @@ const styles = {
   tr: { borderBottom:'1px solid #f0f0f0' },
   td: { padding:'9px 12px', verticalAlign:'middle' },
   badge: { display:'inline-block', padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:600 },
-  btnOk: { marginRight:4, padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#dcfce7', color:'#166534', border:'none', borderRadius:5, fontWeight:600 },
+  btnOk: { padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#dcfce7', color:'#166534', border:'none', borderRadius:5, fontWeight:600 },
   btnDel: { padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#fee2e2', color:'#991b1b', border:'none', borderRadius:5, fontWeight:600 },
+  btnEdit: { padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#e0f2fe', color:'#0369a1', border:'none', borderRadius:5, fontWeight:600 },
+  btnElim: { padding:'4px 10px', fontSize:12, cursor:'pointer', background:'#fee2e2', color:'#991b1b', border:'none', borderRadius:5, fontWeight:600 },
+  btnCancel: { padding:'8px 16px', fontSize:13, cursor:'pointer', background:'#f1f5f9', color:'#374151', border:'1px solid #e2e8f0', borderRadius:7, fontWeight:600 },
+  overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.35)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 },
+  modal: { background:'#fff', borderRadius:12, padding:28, width:360, boxShadow:'0 8px 32px rgba(0,0,0,0.18)' },
+  label: { display:'flex', flexDirection:'column', gap:4, fontSize:13, color:'#374151', fontWeight:600 },
   info: { color:'#94a3b8', textAlign:'center', padding:40 },
   empty: { textAlign:'center', padding:40, color:'#999', fontSize:15 },
 };
