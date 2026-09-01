@@ -28,7 +28,7 @@ export default function HHEEPage() {
   const [personal, setPersonal]   = useState([]);
   const [controladores, setControladores] = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [form, setForm] = useState({ target:'', fecha:'', horas50:'', horas100:'', categoria:'', motivo:'' });
+  const [form, setForm] = useState({ target:'', fecha:'', horas50:'', categoria50:'', motivo50:'', horas100:'', categoria100:'', motivo100:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [filterEstado, setFilterEstado] = useState('');
@@ -115,7 +115,8 @@ export default function HHEEPage() {
     if (!form.fecha) return;
     if (!form.horas50 && !form.horas100) { setError('Ingresá al menos las horas al 50% o al 100%.'); return; }
     if (gestionaPersonal && !form.target) { setError('Elegí para quién es esta hora extra.'); return; }
-    if (!form.categoria) { setError('Elegí una categoría.'); return; }
+    if (form.horas50 && !form.categoria50) { setError('Elegí una categoría para las horas al 50%.'); return; }
+    if (form.horas100 && !form.categoria100) { setError('Elegí una categoría para las horas al 100%.'); return; }
 
     let usuario_id = null, personal_id = null;
     if (gestionaPersonal) {
@@ -126,14 +127,14 @@ export default function HHEEPage() {
     }
 
     const registros = [];
-    if (form.horas50) registros.push({ usuario_id, personal_id, fecha: form.fecha, tipo: '50%', categoria: form.categoria, horas: parseFloat(form.horas50), motivo: form.motivo || null });
-    if (form.horas100) registros.push({ usuario_id, personal_id, fecha: form.fecha, tipo: '100%', categoria: form.categoria, horas: parseFloat(form.horas100), motivo: form.motivo || null });
+    if (form.horas50) registros.push({ usuario_id, personal_id, fecha: form.fecha, tipo: '50%', categoria: form.categoria50, horas: parseFloat(form.horas50), motivo: form.motivo50 || null });
+    if (form.horas100) registros.push({ usuario_id, personal_id, fecha: form.fecha, tipo: '100%', categoria: form.categoria100, horas: parseFloat(form.horas100), motivo: form.motivo100 || null });
 
     setSaving(true);
     const { error: err } = await supabase.from('hhee').insert(registros);
     setSaving(false);
     if (err) { setError(err.message); return; }
-    setForm({ target:'', fecha:'', horas50:'', horas100:'', categoria:'', motivo:'' });
+    setForm({ target:'', fecha:'', horas50:'', categoria50:'', motivo50:'', horas100:'', categoria100:'', motivo100:'' });
     await fetchAll();
   }
 
@@ -193,37 +194,54 @@ export default function HHEEPage() {
 
       {error && <p style={styles.error}>{error}</p>}
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        {gestionaPersonal && (
-          <select value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
-            <option value="">¿Para quién?</option>
-            <option value={`u:${role.id}`}>Para mí</option>
-            {Object.entries(gruposPersonal).map(([grupo, lista]) => (
-              <optgroup key={grupo} label={grupo}>
-                {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
-              </optgroup>
-            ))}
-            {controladores.length > 0 && (
-              <optgroup label="Controladores">
-                {controladores.map(c => <option key={c.id} value={`p:${c.id}`}>{c.nombre}</option>)}
-              </optgroup>
-            )}
-            {verTodo && usuarios.length > 0 && (
-              <optgroup label="Empleados">
-                {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
-              </optgroup>
-            )}
-          </select>
-        )}
-        <input type="date" value={form.fecha} onChange={e => handleFechaChange(e.target.value)} required style={styles.input} />
-        <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} required style={styles.input}>
-          <option value="">Categoría...</option>
-          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <input type="number" step="0.5" min="0" placeholder="Hs 50%" value={form.horas50} onChange={e => setForm(f => ({ ...f, horas50: e.target.value }))} style={{ ...styles.input, width:90 }} />
-        <input type="number" step="0.5" min="0" placeholder="Hs 100%" value={form.horas100} onChange={e => setForm(f => ({ ...f, horas100: e.target.value }))} style={{ ...styles.input, width:90 }} />
-        <input type="text" placeholder="Motivo (opcional)" value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} style={{ ...styles.input, flex:1 }} />
-        <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Cargar'}</button>
+      <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {/* fila 1: empleado + fecha */}
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+          {gestionaPersonal && (
+            <select value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} required style={styles.input}>
+              <option value="">¿Para quién?</option>
+              <option value={`u:${role.id}`}>Para mí</option>
+              {Object.entries(gruposPersonal).map(([grupo, lista]) => (
+                <optgroup key={grupo} label={grupo}>
+                  {lista.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nombre}</option>)}
+                </optgroup>
+              ))}
+              {controladores.length > 0 && (
+                <optgroup label="Controladores">
+                  {controladores.map(c => <option key={c.id} value={`p:${c.id}`}>{c.nombre}</option>)}
+                </optgroup>
+              )}
+              {verTodo && usuarios.length > 0 && (
+                <optgroup label="Empleados">
+                  {usuarios.map(u => <option key={u.id} value={`u:${u.id}`}>{u.nombre || u.email}</option>)}
+                </optgroup>
+              )}
+            </select>
+          )}
+          <input type="date" value={form.fecha} onChange={e => handleFechaChange(e.target.value)} required style={styles.input} />
+        </div>
+        {/* fila 2: bloques independientes + cargar */}
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end' }}>
+          <div style={styles.typeBlock}>
+            <span style={styles.typeTitle}>50%</span>
+            <input type="number" step="0.5" min="0" placeholder="Horas" value={form.horas50} onChange={e => setForm(f => ({ ...f, horas50: e.target.value }))} style={{ ...styles.input, width:90 }} />
+            <select value={form.categoria50} onChange={e => setForm(f => ({ ...f, categoria50: e.target.value }))} style={styles.input}>
+              <option value="">Categoría...</option>
+              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input type="text" placeholder="Comentario adicional (opcional)" value={form.motivo50} onChange={e => setForm(f => ({ ...f, motivo50: e.target.value }))} style={{ ...styles.input, fontSize:12 }} />
+          </div>
+          <div style={styles.typeBlock}>
+            <span style={styles.typeTitle}>100%</span>
+            <input type="number" step="0.5" min="0" placeholder="Horas" value={form.horas100} onChange={e => setForm(f => ({ ...f, horas100: e.target.value }))} style={{ ...styles.input, width:90 }} />
+            <select value={form.categoria100} onChange={e => setForm(f => ({ ...f, categoria100: e.target.value }))} style={styles.input}>
+              <option value="">Categoría...</option>
+              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input type="text" placeholder="Comentario adicional (opcional)" value={form.motivo100} onChange={e => setForm(f => ({ ...f, motivo100: e.target.value }))} style={{ ...styles.input, fontSize:12 }} />
+          </div>
+          <button type="submit" disabled={saving} style={styles.btnNew}>{saving ? 'Guardando...' : '+ Cargar'}</button>
+        </div>
       </form>
       <p style={styles.hint}>Podés ingresar horas al 50%, al 100% o ambas en simultáneo — se guardan como registros separados. 50%: hasta el sábado 13hs. 100%: desde el sábado 13hs hasta el domingo 24hs.</p>
 
@@ -333,6 +351,8 @@ const styles = {
   subtitle: { margin:'4px 0 0', fontSize:14, color:'#64748b' },
   form: { display:'flex', gap:10, marginBottom:8, flexWrap:'wrap' },
   hint: { fontSize:12, color:'#94a3b8', marginBottom:20 },
+  typeBlock: { display:'flex', flexDirection:'column', gap:5, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 12px' },
+  typeTitle: { fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em' },
   error: { color:'#c0392b', fontSize:13, marginBottom:12 },
   input: { padding:'9px 12px', border:'1px solid #ccc', borderRadius:7, fontSize:14 },
   btnNew: { background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'10px 20px', fontSize:14, fontWeight:600, cursor:'pointer' },
