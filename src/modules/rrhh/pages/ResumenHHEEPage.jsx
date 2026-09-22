@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../shared/lib/supabaseClient';
+import * as XLSX from 'xlsx';
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -124,43 +125,138 @@ export default function ResumenHHEEPage() {
   function fmtHs(n) { return n > 0 ? n.toLocaleString('es-AR', { maximumFractionDigits: 1 }) : '—'; }
 
   function descargarExcel() {
-    const filas = [
+    const wb = XLSX.utils.book_new();
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function addSheet(name, rows) {
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, name);
+      return ws;
+    }
+    function setWidths(ws, widths) {
+      ws['!cols'] = widths.map(w => ({ wch: w }));
+    }
+    function mergeCells(ws, merges) {
+      ws['!merges'] = merges;
+    }
+
+    // ── Hoja 1: Evolución ────────────────────────────────────────────────────
+    const evRows = [
       [`EVOLUCIÓN HHEE ${anio}`],
       [],
-      ['Mes', 'Op. Hs 50%', 'Op. Hs 100%', 'Op. $', 'Inv. Hs 50%', 'Inv. Hs 100%', 'Inv. $', 'Total Hs 50%', 'Total Hs 100%', 'Total $'],
+      ['', 'OPERATIVAS', '', '', 'INVENTARIO / PRE-INVENTARIO', '', '', 'TOTAL', '', ''],
+      ['Mes', 'Hs 50%', 'Hs 100%', '$', 'Hs 50%', 'Hs 100%', '$', 'Hs 50%', 'Hs 100%', '$'],
       ...datos.map((m, i) => [
-        MESES_FULL[i], m.op50||0, m.op100||0, Math.round(m.$op),
-        m.inv50||0, m.inv100||0, Math.round(m.$inv),
-        m.total50||0, m.total100||0, Math.round(m.$total),
+        MESES_FULL[i],
+        m.op50 || 0, m.op100 || 0, Math.round(m.$op),
+        m.inv50 || 0, m.inv100 || 0, Math.round(m.$inv),
+        m.total50 || 0, m.total100 || 0, Math.round(m.$total),
       ]),
-      ['TOTAL', totales.op50, totales.op100, Math.round(totales.$op),
-       totales.inv50, totales.inv100, Math.round(totales.$inv),
-       totales.total50, totales.total100, Math.round(totales.$total)],
-      [],
+      ['TOTAL ANUAL',
+        totales.op50, totales.op100, Math.round(totales.$op),
+        totales.inv50, totales.inv100, Math.round(totales.$inv),
+        totales.total50, totales.total100, Math.round(totales.$total),
+      ],
+    ];
+    const wsEv = addSheet('Evolución', evRows);
+    setWidths(wsEv, [14, 9, 9, 12, 9, 9, 12, 9, 9, 13]);
+    mergeCells(wsEv, [
+      { s: { r: 2, c: 1 }, e: { r: 2, c: 3 } },
+      { s: { r: 2, c: 4 }, e: { r: 2, c: 6 } },
+      { s: { r: 2, c: 7 }, e: { r: 2, c: 9 } },
+    ]);
+
+    // ── Hoja 2: Participantes ────────────────────────────────────────────────
+    const invDatos = datos.filter(m => m.invCount > 0 || m.inv50 > 0 || m.inv100 > 0);
+    const partRows = [
       [`PARTICIPANTES EN INVENTARIOS ${anio}`],
       [],
       ['Mes', 'Participantes', 'Hs 50% inv.', 'Hs 100% inv.', '$ inventario'],
-      ...datos.filter(m => m.invCount > 0 || m.inv50 > 0 || m.inv100 > 0).map((m, _, arr) => {
+      ...invDatos.map(m => {
         const i = datos.indexOf(m);
-        return [MESES_FULL[i], m.invCount || '—', m.inv50 || '—', m.inv100 || '—', m.$inv > 0 ? Math.round(m.$inv) : '—'];
+        return [
+          MESES_FULL[i],
+          m.invCount || 0,
+          m.inv50 || 0,
+          m.inv100 || 0,
+          m.$inv > 0 ? Math.round(m.$inv) : 0,
+        ];
       }),
-      [],
+    ];
+    if (invDatos.length > 0) {
+      const totPart = invDatos.reduce((a, m) => ({ inv50: a.inv50 + m.inv50, inv100: a.inv100 + m.inv100, $inv: a.$inv + m.$inv }), { inv50: 0, inv100: 0, $inv: 0 });
+      partRows.push(['TOTAL', '', totPart.inv50, totPart.inv100, Math.round(totPart.$inv)]);
+    }
+    const wsPart = addSheet('Participantes', partRows);
+    setWidths(wsPart, [14, 14, 13, 14, 14]);
+
+    // ── Hoja 3: Valor hora ───────────────────────────────────────────────────
+    const tarifaRows = [
       [`VALOR HORA MENSUAL ${anio}`],
       [],
       ['Mes', 'Valor hora 50%', 'Valor hora 100%', 'Variación 50%', 'Variación 100%'],
       ...datos.map((m, i) => {
         const prev = i > 0 ? datos[i - 1] : null;
-        const var50  = prev && prev.v50  > 0 ? ((m.v50  - prev.v50)  / prev.v50  * 100).toFixed(1) + '%' : '—';
-        const var100 = prev && prev.v100 > 0 ? ((m.v100 - prev.v100) / prev.v100 * 100).toFixed(1) + '%' : '—';
-        return [MESES_FULL[i], m.v50 > 0 ? Math.round(m.v50) : '—', m.v100 > 0 ? Math.round(m.v100) : '—', var50, var100];
+        const var50  = prev && prev.v50  > 0 ? parseFloat(((m.v50  - prev.v50)  / prev.v50  * 100).toFixed(1)) : null;
+        const var100 = prev && prev.v100 > 0 ? parseFloat(((m.v100 - prev.v100) / prev.v100 * 100).toFixed(1)) : null;
+        return [
+          MESES_FULL[i],
+          m.v50  > 0 ? Math.round(m.v50)  : '',
+          m.v100 > 0 ? Math.round(m.v100) : '',
+          var50  != null ? `${var50  >= 0 ? '+' : ''}${var50}%`  : '',
+          var100 != null ? `${var100 >= 0 ? '+' : ''}${var100}%` : '',
+        ];
       }),
     ];
-    const csv = filas.map(f => f.map(c => `"${c}"`).join(';')).join('\r\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
-    a.download = `evolucion_hhee_${anio}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    const wsTar = addSheet('Valor hora', tarifaRows);
+    setWidths(wsTar, [14, 15, 16, 14, 15]);
+
+    // ── Hoja 4: Análisis ────────────────────────────────────────────────────
+    const mesesConDatos = datos.filter(m => m.$total > 0 || m.total50 > 0 || m.total100 > 0);
+    const mesMayorCosto = mesesConDatos.length
+      ? mesesConDatos.reduce((a, b) => b.$total > a.$total ? b : a)
+      : null;
+    const mesMayorPartic = datos.filter(m => m.invCount > 0).length
+      ? datos.filter(m => m.invCount > 0).reduce((a, b) => b.invCount > a.invCount ? b : a)
+      : null;
+    const totalHs50  = totales.total50;
+    const totalHs100 = totales.total100;
+    const totalHs    = totalHs50 + totalHs100;
+    const pctInvHs   = totalHs > 0 ? ((totales.inv50 + totales.inv100) / totalHs * 100).toFixed(1) : '—';
+    const pctOpHs    = totalHs > 0 ? ((totales.op50  + totales.op100)  / totalHs * 100).toFixed(1) : '—';
+    const primerTarifa = datos.find(m => m.v50 > 0);
+    const ultimaTarifa = [...datos].reverse().find(m => m.v50 > 0);
+    const varAnual50 = primerTarifa && ultimaTarifa && primerTarifa !== ultimaTarifa
+      ? `${((ultimaTarifa.v50 - primerTarifa.v50) / primerTarifa.v50 * 100).toFixed(1)}%`
+      : '—';
+
+    const analRows = [
+      [`ANÁLISIS HHEE ${anio}`],
+      [],
+      ['RESUMEN GENERAL', ''],
+      ['Total horas 50%', totalHs50],
+      ['Total horas 100%', totalHs100],
+      ['Total horas combinadas', totalHs],
+      ['Total $ pagado', Math.round(totales.$total)],
+      [],
+      ['DISTRIBUCIÓN DE HORAS', ''],
+      ['% Operativas', `${pctOpHs}%`],
+      ['% Inventario / Pre-inventario', `${pctInvHs}%`],
+      [],
+      ['DESTACADOS', ''],
+      ['Mes con mayor costo', mesMayorCosto ? `${MESES_FULL[mesMayorCosto.mes - 1]} ($${Math.round(mesMayorCosto.$total).toLocaleString('es-AR')})` : '—'],
+      ['Mes con más participantes en inv.', mesMayorPartic ? `${MESES_FULL[mesMayorPartic.mes - 1]} (${mesMayorPartic.invCount} personas)` : '—'],
+      [],
+      ['VARIACIÓN TARIFARIA', ''],
+      ['Variación anual valor hora 50%', varAnual50],
+      ['Valor hora 50% inicio del año', primerTarifa ? `$${Math.round(primerTarifa.v50).toLocaleString('es-AR')}` : '—'],
+      ['Valor hora 50% último mes con tarifa', ultimaTarifa ? `$${Math.round(ultimaTarifa.v50).toLocaleString('es-AR')}` : '—'],
+    ];
+    const wsAnal = addSheet('Análisis', analRows);
+    setWidths(wsAnal, [34, 28]);
+
+    // ── descargar ─────────────────────────────────────────────────────────────
+    XLSX.writeFile(wb, `evolucion_hhee_${anio}.xlsx`);
   }
 
   function imprimirPDF() { window.print(); }
