@@ -25,7 +25,7 @@ export default function ResumenHHEEPage() {
     const desde = `${anio}-01-01`;
     const hasta = `${anio}-12-31`;
     const [{ data: hhee }, { data: tarifas }, { data: historico }] = await Promise.all([
-      supabase.from('hhee').select('fecha, tipo, horas, categoria').eq('estado', 'aprobada').gte('fecha', desde).lte('fecha', hasta),
+      supabase.from('hhee').select('fecha, tipo, horas, categoria, usuario_id, personal_id').eq('estado', 'aprobada').gte('fecha', desde).lte('fecha', hasta),
       supabase.from('hhee_tarifas').select('mes, valor_hora_50, valor_hora_100').eq('anio', anio),
       supabase.from('hhee_historico').select('*').eq('anio', anio),
     ]);
@@ -45,6 +45,7 @@ export default function ResumenHHEEPage() {
 
     const meses = Array.from({ length: 12 }, (_, i) => ({
       mes: i + 1, op50: 0, op100: 0, inv50: 0, inv100: 0, total50: 0, total100: 0, esHistorico: false,
+      invParticipantes: new Set(),
     }));
 
     // cargar datos reales de hhee
@@ -55,6 +56,7 @@ export default function ResumenHHEEPage() {
       const inv = esInventario(r.categoria);
       if (r.tipo === '50%') { obj.total50 += hs; if (inv) obj.inv50 += hs; else obj.op50 += hs; }
       else { obj.total100 += hs; if (inv) obj.inv100 += hs; else obj.op100 += hs; }
+      if (inv) obj.invParticipantes.add(r.personal_id ? `p:${r.personal_id}` : `u:${r.usuario_id}`);
     });
 
     // para meses sin datos reales, usar historico
@@ -75,7 +77,7 @@ export default function ResumenHHEEPage() {
       const tar = tarifaMap[m.mes] || {};
       const v50  = parseFloat(tar.valor_hora_50)  || 0;
       const v100 = parseFloat(tar.valor_hora_100) || 0;
-      return { ...m, v50, v100, $op: m.op50 * v50 + m.op100 * v100, $inv: m.inv50 * v50 + m.inv100 * v100, $total: m.total50 * v50 + m.total100 * v100 };
+      return { ...m, v50, v100, $op: m.op50 * v50 + m.op100 * v100, $inv: m.inv50 * v50 + m.inv100 * v100, $total: m.total50 * v50 + m.total100 * v100, invCount: m.invParticipantes.size };
     });
 
     setDatos(resultado);
@@ -266,6 +268,41 @@ export default function ResumenHHEEPage() {
             <p style={s.warn}>
               Algunos meses tienen horas pero sin tarifa cargada — el $ aparece en $0. Cargá los valores en Cierre HHEE.
             </p>
+          )}
+
+          {/* tabla participantes inventario */}
+          {datos.some(m => m.invCount > 0) && (
+            <div style={{ marginTop: 36 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>Participantes en inventarios</h2>
+              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>Empleados con HHEE de Inventario o Pre-inventario aprobadas (50% o 100%)</p>
+              <div style={s.tableWrap}>
+                <table style={s.table}>
+                  <thead>
+                    <tr>
+                      <th style={s.th}>Mes</th>
+                      <th style={{ ...s.th, textAlign:'right' }}>Participantes</th>
+                      <th style={{ ...s.th, textAlign:'right' }}>Hs 50% inv.</th>
+                      <th style={{ ...s.th, textAlign:'right' }}>Hs 100% inv.</th>
+                      <th style={{ ...s.th, textAlign:'right' }}>$ inventario</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datos.filter(m => m.invCount > 0 || m.inv50 > 0 || m.inv100 > 0).map((m, _, arr) => {
+                      const i = datos.indexOf(m);
+                      return (
+                        <tr key={m.mes} style={s.tr}>
+                          <td style={s.td}>{MESES_FULL[i]}</td>
+                          <td style={{ ...s.tdNum, fontWeight: 700, color: '#7c3aed' }}>{m.invCount > 0 ? m.invCount : '—'}</td>
+                          <td style={s.tdNum}>{fmtHs(m.inv50)}</td>
+                          <td style={s.tdNum}>{fmtHs(m.inv100)}</td>
+                          <td style={{ ...s.tdNum, fontWeight: 600 }}>{fmt$(m.$inv)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           {/* tabla de tarifas históricas */}
