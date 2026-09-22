@@ -137,6 +137,14 @@ export default function ResumenHHEEPage() {
        totales.inv50, totales.inv100, Math.round(totales.$inv),
        totales.total50, totales.total100, Math.round(totales.$total)],
       [],
+      [`PARTICIPANTES EN INVENTARIOS ${anio}`],
+      [],
+      ['Mes', 'Participantes', 'Hs 50% inv.', 'Hs 100% inv.', '$ inventario'],
+      ...datos.filter(m => m.invCount > 0 || m.inv50 > 0 || m.inv100 > 0).map((m, _, arr) => {
+        const i = datos.indexOf(m);
+        return [MESES_FULL[i], m.invCount || '—', m.inv50 || '—', m.inv100 || '—', m.$inv > 0 ? Math.round(m.$inv) : '—'];
+      }),
+      [],
       [`VALOR HORA MENSUAL ${anio}`],
       [],
       ['Mes', 'Valor hora 50%', 'Valor hora 100%', 'Variación 50%', 'Variación 100%'],
