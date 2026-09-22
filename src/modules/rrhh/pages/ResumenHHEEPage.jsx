@@ -123,6 +123,8 @@ export default function ResumenHHEEPage() {
 
   function descargarExcel() {
     const filas = [
+      [`EVOLUCIÓN HHEE ${anio}`],
+      [],
       ['Mes', 'Op. Hs 50%', 'Op. Hs 100%', 'Op. $', 'Inv. Hs 50%', 'Inv. Hs 100%', 'Inv. $', 'Total Hs 50%', 'Total Hs 100%', 'Total $'],
       ...datos.map((m, i) => [
         MESES_FULL[i], m.op50||0, m.op100||0, Math.round(m.$op),
@@ -132,6 +134,16 @@ export default function ResumenHHEEPage() {
       ['TOTAL', totales.op50, totales.op100, Math.round(totales.$op),
        totales.inv50, totales.inv100, Math.round(totales.$inv),
        totales.total50, totales.total100, Math.round(totales.$total)],
+      [],
+      [`VALOR HORA MENSUAL ${anio}`],
+      [],
+      ['Mes', 'Valor hora 50%', 'Valor hora 100%', 'Variación 50%', 'Variación 100%'],
+      ...datos.map((m, i) => {
+        const prev = i > 0 ? datos[i - 1] : null;
+        const var50  = prev && prev.v50  > 0 ? ((m.v50  - prev.v50)  / prev.v50  * 100).toFixed(1) + '%' : '—';
+        const var100 = prev && prev.v100 > 0 ? ((m.v100 - prev.v100) / prev.v100 * 100).toFixed(1) + '%' : '—';
+        return [MESES_FULL[i], m.v50 > 0 ? Math.round(m.v50) : '—', m.v100 > 0 ? Math.round(m.v100) : '—', var50, var100];
+      }),
     ];
     const csv = filas.map(f => f.map(c => `"${c}"`).join(';')).join('\r\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
