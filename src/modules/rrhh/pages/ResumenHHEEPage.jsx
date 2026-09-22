@@ -255,6 +255,45 @@ export default function ResumenHHEEPage() {
               Algunos meses tienen horas pero sin tarifa cargada — el $ aparece en $0. Cargá los valores en Cierre HHEE.
             </p>
           )}
+
+          {/* tabla de tarifas históricas */}
+          <div style={{ marginTop: 36 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginBottom: 12 }}>Valor hora mensual</h2>
+            <div style={s.tableWrap}>
+              <table style={s.table}>
+                <thead>
+                  <tr>
+                    <th style={s.th}>Mes</th>
+                    <th style={{ ...s.th, textAlign:'right' }}>Valor hora 50%</th>
+                    <th style={{ ...s.th, textAlign:'right' }}>Valor hora 100%</th>
+                    <th style={{ ...s.th, textAlign:'right' }}>Variación 50%</th>
+                    <th style={{ ...s.th, textAlign:'right' }}>Variación 100%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.map((m, i) => {
+                    const prev = i > 0 ? datos[i - 1] : null;
+                    const var50  = prev && prev.v50  > 0 ? ((m.v50  - prev.v50)  / prev.v50  * 100) : null;
+                    const var100 = prev && prev.v100 > 0 ? ((m.v100 - prev.v100) / prev.v100 * 100) : null;
+                    const sinTarifa = m.v50 === 0 && m.v100 === 0;
+                    return (
+                      <tr key={m.mes} style={s.tr}>
+                        <td style={s.td}>{MESES_FULL[i]}</td>
+                        <td style={{ ...s.tdNum, color: sinTarifa ? '#94a3b8' : undefined }}>{m.v50 > 0 ? fmt$(m.v50) : '—'}</td>
+                        <td style={{ ...s.tdNum, color: sinTarifa ? '#94a3b8' : undefined }}>{m.v100 > 0 ? fmt$(m.v100) : '—'}</td>
+                        <td style={{ ...s.tdNum, color: var50 == null ? '#94a3b8' : var50 >= 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                          {var50 != null ? `${var50 >= 0 ? '+' : ''}${var50.toFixed(1)}%` : '—'}
+                        </td>
+                        <td style={{ ...s.tdNum, color: var100 == null ? '#94a3b8' : var100 >= 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                          {var100 != null ? `${var100 >= 0 ? '+' : ''}${var100.toFixed(1)}%` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
 
