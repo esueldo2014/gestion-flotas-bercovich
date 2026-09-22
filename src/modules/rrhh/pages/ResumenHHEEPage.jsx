@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../shared/lib/supabaseClient';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -124,139 +124,239 @@ export default function ResumenHHEEPage() {
   function fmt$(n) { return n > 0 ? `$${Math.round(n).toLocaleString('es-AR')}` : '—'; }
   function fmtHs(n) { return n > 0 ? n.toLocaleString('es-AR', { maximumFractionDigits: 1 }) : '—'; }
 
-  function descargarExcel() {
-    const wb = XLSX.utils.book_new();
+  async function descargarExcel() {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Gestión de Flotas';
 
-    // ── helpers ──────────────────────────────────────────────────────────────
-    function addSheet(name, rows) {
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      XLSX.utils.book_append_sheet(wb, ws, name);
-      return ws;
+    // ── paleta de colores ────────────────────────────────────────────────────
+    const C = {
+      azulOsc:  '1E3A5F',
+      azulMed:  '2563EB',
+      azulClar: 'DBEAFE',
+      violeta:  '6D28D9',
+      violClar: 'EDE9FE',
+      verde:    '166534',
+      verdeCl:  'DCFCE7',
+      gris:     'F1F5F9',
+      grisMed:  '94A3B8',
+      negro:    '1A1A2E',
+      blanco:   'FFFFFF',
+    };
+
+    const fmtPeso  = '"$"#,##0';
+    const fmtHs    = '#,##0.0';
+    const fmtNum   = '#,##0';
+    const aln      = (h, v = 'middle') => ({ horizontal: h, vertical: v });
+    const border   = { style: 'thin', color: { argb: 'E2E8F0' } };
+    const borders  = { top: border, left: border, bottom: border, right: border };
+
+    function titleFont(color = C.blanco)  { return { name: 'Arial', bold: true, size: 13, color: { argb: color } }; }
+    function headerFont(color = C.blanco) { return { name: 'Arial', bold: true, size: 10, color: { argb: color } }; }
+    function dataFont(bold = false)        { return { name: 'Arial', size: 10, bold }; }
+    function fill(argb)                    { return { type: 'pattern', pattern: 'solid', fgColor: { argb } }; }
+
+    function applyHeader(row, bg, fontColor = C.blanco) {
+      row.eachCell(cell => {
+        cell.font      = headerFont(fontColor);
+        cell.fill      = fill(bg);
+        cell.border    = borders;
+        cell.alignment = aln('center');
+      });
+      row.height = 22;
     }
-    function setWidths(ws, widths) {
-      ws['!cols'] = widths.map(w => ({ wch: w }));
-    }
-    function mergeCells(ws, merges) {
-      ws['!merges'] = merges;
+
+    function applyData(row, numCols = [], currCols = [], bold = false) {
+      row.eachCell({ includeEmpty: true }, (cell, col) => {
+        cell.font      = dataFont(bold);
+        cell.border    = borders;
+        cell.alignment = col === 1 ? aln('left') : aln('right');
+        if (currCols.includes(col)) cell.numFmt = fmtPeso;
+        else if (numCols.includes(col)) cell.numFmt = fmtHs;
+      });
+      row.height = 18;
     }
 
     // ── Hoja 1: Evolución ────────────────────────────────────────────────────
-    const evRows = [
-      [`EVOLUCIÓN HHEE ${anio}`],
-      [],
-      ['', 'OPERATIVAS', '', '', 'INVENTARIO / PRE-INVENTARIO', '', '', 'TOTAL', '', ''],
-      ['Mes', 'Hs 50%', 'Hs 100%', '$', 'Hs 50%', 'Hs 100%', '$', 'Hs 50%', 'Hs 100%', '$'],
-      ...datos.map((m, i) => [
+    const ws1 = wb.addWorksheet('Evolución');
+    ws1.columns = [
+      { width: 16 }, { width: 9 }, { width: 9 }, { width: 13 },
+      { width: 9 },  { width: 9 }, { width: 13 },
+      { width: 9 },  { width: 9 }, { width: 14 },
+    ];
+
+    // Título
+    ws1.mergeCells('A1:J1');
+    const t1 = ws1.getCell('A1');
+    t1.value = `EVOLUCIÓN HHEE ${anio}`;
+    t1.font = titleFont(); t1.fill = fill(C.azulOsc); t1.alignment = aln('center');
+    ws1.getRow(1).height = 28;
+
+    ws1.addRow([]);
+
+    // Fila grupos
+    ws1.mergeCells('B3:D3'); ws1.mergeCells('E3:G3'); ws1.mergeCells('H3:J3');
+    const rGrupo = ws1.getRow(3);
+    rGrupo.getCell(1).value = '';
+    rGrupo.getCell(2).value = 'OPERATIVAS';
+    rGrupo.getCell(5).value = 'INVENTARIO / PRE-INVENTARIO';
+    rGrupo.getCell(8).value = 'TOTAL';
+    rGrupo.getCell(2).fill = fill(C.azulMed); rGrupo.getCell(2).font = headerFont(); rGrupo.getCell(2).alignment = aln('center');
+    rGrupo.getCell(5).fill = fill(C.violeta); rGrupo.getCell(5).font = headerFont(); rGrupo.getCell(5).alignment = aln('center');
+    rGrupo.getCell(8).fill = fill(C.verde);   rGrupo.getCell(8).font = headerFont(); rGrupo.getCell(8).alignment = aln('center');
+    rGrupo.height = 20;
+
+    // Fila subencabezado
+    const rSub = ws1.addRow(['Mes', 'Hs 50%', 'Hs 100%', '$', 'Hs 50%', 'Hs 100%', '$', 'Hs 50%', 'Hs 100%', '$']);
+    applyHeader(rSub, C.gris, C.negro);
+
+    // Datos
+    datos.forEach((m, i) => {
+      const r = ws1.addRow([
         MESES_FULL[i],
         m.op50 || 0, m.op100 || 0, Math.round(m.$op),
         m.inv50 || 0, m.inv100 || 0, Math.round(m.$inv),
         m.total50 || 0, m.total100 || 0, Math.round(m.$total),
-      ]),
-      ['TOTAL ANUAL',
-        totales.op50, totales.op100, Math.round(totales.$op),
-        totales.inv50, totales.inv100, Math.round(totales.$inv),
-        totales.total50, totales.total100, Math.round(totales.$total),
-      ],
-    ];
-    const wsEv = addSheet('Evolución', evRows);
-    setWidths(wsEv, [14, 9, 9, 12, 9, 9, 12, 9, 9, 13]);
-    mergeCells(wsEv, [
-      { s: { r: 2, c: 1 }, e: { r: 2, c: 3 } },
-      { s: { r: 2, c: 4 }, e: { r: 2, c: 6 } },
-      { s: { r: 2, c: 7 }, e: { r: 2, c: 9 } },
+      ]);
+      applyData(r, [2,3,5,6,8,9], [4,7,10]);
+      [5,6,7].forEach(c => { r.getCell(c).font = { ...dataFont(), color: { argb: C.violeta } }; });
+    });
+
+    // Total
+    const rTot = ws1.addRow([
+      'TOTAL ANUAL',
+      totales.op50, totales.op100, Math.round(totales.$op),
+      totales.inv50, totales.inv100, Math.round(totales.$inv),
+      totales.total50, totales.total100, Math.round(totales.$total),
     ]);
+    applyData(rTot, [2,3,5,6,8,9], [4,7,10], true);
+    rTot.eachCell(c => { c.fill = fill(C.gris); });
 
     // ── Hoja 2: Participantes ────────────────────────────────────────────────
+    const ws2 = wb.addWorksheet('Participantes');
+    ws2.columns = [{ width: 16 }, { width: 14 }, { width: 13 }, { width: 14 }, { width: 14 }];
+
+    ws2.mergeCells('A1:E1');
+    const t2 = ws2.getCell('A1');
+    t2.value = `PARTICIPANTES EN INVENTARIOS ${anio}`;
+    t2.font = titleFont(); t2.fill = fill(C.violeta); t2.alignment = aln('center');
+    ws2.getRow(1).height = 28;
+    ws2.addRow([]);
+
+    const rPH = ws2.addRow(['Mes', 'Participantes', 'Hs 50% inv.', 'Hs 100% inv.', '$ inventario']);
+    applyHeader(rPH, C.violeta);
+
     const invDatos = datos.filter(m => m.invCount > 0 || m.inv50 > 0 || m.inv100 > 0);
-    const partRows = [
-      [`PARTICIPANTES EN INVENTARIOS ${anio}`],
-      [],
-      ['Mes', 'Participantes', 'Hs 50% inv.', 'Hs 100% inv.', '$ inventario'],
-      ...invDatos.map(m => {
-        const i = datos.indexOf(m);
-        return [
-          MESES_FULL[i],
-          m.invCount || 0,
-          m.inv50 || 0,
-          m.inv100 || 0,
-          m.$inv > 0 ? Math.round(m.$inv) : 0,
-        ];
-      }),
-    ];
+    invDatos.forEach(m => {
+      const i = datos.indexOf(m);
+      const r = ws2.addRow([MESES_FULL[i], m.invCount || 0, m.inv50 || 0, m.inv100 || 0, m.$inv > 0 ? Math.round(m.$inv) : 0]);
+      applyData(r, [3,4], [5]);
+      r.getCell(2).numFmt = fmtNum;
+    });
+
     if (invDatos.length > 0) {
-      const totPart = invDatos.reduce((a, m) => ({ inv50: a.inv50 + m.inv50, inv100: a.inv100 + m.inv100, $inv: a.$inv + m.$inv }), { inv50: 0, inv100: 0, $inv: 0 });
-      partRows.push(['TOTAL', '', totPart.inv50, totPart.inv100, Math.round(totPart.$inv)]);
+      const totP = invDatos.reduce((a, m) => ({ inv50: a.inv50+m.inv50, inv100: a.inv100+m.inv100, $inv: a.$inv+m.$inv }), { inv50:0, inv100:0, $inv:0 });
+      const rTP = ws2.addRow(['TOTAL', '', totP.inv50, totP.inv100, Math.round(totP.$inv)]);
+      applyData(rTP, [3,4], [5], true);
+      rTP.eachCell(c => { c.fill = fill(C.gris); });
     }
-    const wsPart = addSheet('Participantes', partRows);
-    setWidths(wsPart, [14, 14, 13, 14, 14]);
 
     // ── Hoja 3: Valor hora ───────────────────────────────────────────────────
-    const tarifaRows = [
-      [`VALOR HORA MENSUAL ${anio}`],
-      [],
-      ['Mes', 'Valor hora 50%', 'Valor hora 100%', 'Variación 50%', 'Variación 100%'],
-      ...datos.map((m, i) => {
-        const prev = i > 0 ? datos[i - 1] : null;
-        const var50  = prev && prev.v50  > 0 ? parseFloat(((m.v50  - prev.v50)  / prev.v50  * 100).toFixed(1)) : null;
-        const var100 = prev && prev.v100 > 0 ? parseFloat(((m.v100 - prev.v100) / prev.v100 * 100).toFixed(1)) : null;
-        return [
-          MESES_FULL[i],
-          m.v50  > 0 ? Math.round(m.v50)  : '',
-          m.v100 > 0 ? Math.round(m.v100) : '',
-          var50  != null ? `${var50  >= 0 ? '+' : ''}${var50}%`  : '',
-          var100 != null ? `${var100 >= 0 ? '+' : ''}${var100}%` : '',
-        ];
-      }),
-    ];
-    const wsTar = addSheet('Valor hora', tarifaRows);
-    setWidths(wsTar, [14, 15, 16, 14, 15]);
+    const ws3 = wb.addWorksheet('Valor hora');
+    ws3.columns = [{ width: 16 }, { width: 15 }, { width: 16 }, { width: 14 }, { width: 15 }];
+
+    ws3.mergeCells('A1:E1');
+    const t3 = ws3.getCell('A1');
+    t3.value = `VALOR HORA MENSUAL ${anio}`;
+    t3.font = titleFont(); t3.fill = fill(C.azulOsc); t3.alignment = aln('center');
+    ws3.getRow(1).height = 28;
+    ws3.addRow([]);
+
+    const rVH = ws3.addRow(['Mes', 'Valor hora 50%', 'Valor hora 100%', 'Variación 50%', 'Variación 100%']);
+    applyHeader(rVH, C.azulOsc);
+
+    datos.forEach((m, i) => {
+      const prev = i > 0 ? datos[i-1] : null;
+      const var50  = prev && prev.v50  > 0 ? parseFloat(((m.v50  - prev.v50)  / prev.v50  * 100).toFixed(1)) : null;
+      const var100 = prev && prev.v100 > 0 ? parseFloat(((m.v100 - prev.v100) / prev.v100 * 100).toFixed(1)) : null;
+      const r = ws3.addRow([
+        MESES_FULL[i],
+        m.v50  > 0 ? Math.round(m.v50)  : '',
+        m.v100 > 0 ? Math.round(m.v100) : '',
+        var50  != null ? `${var50  >= 0 ? '+' : ''}${var50}%`  : '',
+        var100 != null ? `${var100 >= 0 ? '+' : ''}${var100}%` : '',
+      ]);
+      applyData(r, [], [2,3]);
+      if (var50  != null) r.getCell(4).font = { name:'Arial', size:10, bold:true, color:{ argb: var50  >= 0 ? '16A34A' : 'DC2626' } };
+      if (var100 != null) r.getCell(5).font = { name:'Arial', size:10, bold:true, color:{ argb: var100 >= 0 ? '16A34A' : 'DC2626' } };
+    });
 
     // ── Hoja 4: Análisis ────────────────────────────────────────────────────
-    const mesesConDatos = datos.filter(m => m.$total > 0 || m.total50 > 0 || m.total100 > 0);
-    const mesMayorCosto = mesesConDatos.length
-      ? mesesConDatos.reduce((a, b) => b.$total > a.$total ? b : a)
-      : null;
-    const mesMayorPartic = datos.filter(m => m.invCount > 0).length
-      ? datos.filter(m => m.invCount > 0).reduce((a, b) => b.invCount > a.invCount ? b : a)
-      : null;
-    const totalHs50  = totales.total50;
-    const totalHs100 = totales.total100;
-    const totalHs    = totalHs50 + totalHs100;
-    const pctInvHs   = totalHs > 0 ? ((totales.inv50 + totales.inv100) / totalHs * 100).toFixed(1) : '—';
-    const pctOpHs    = totalHs > 0 ? ((totales.op50  + totales.op100)  / totalHs * 100).toFixed(1) : '—';
-    const primerTarifa = datos.find(m => m.v50 > 0);
-    const ultimaTarifa = [...datos].reverse().find(m => m.v50 > 0);
-    const varAnual50 = primerTarifa && ultimaTarifa && primerTarifa !== ultimaTarifa
-      ? `${((ultimaTarifa.v50 - primerTarifa.v50) / primerTarifa.v50 * 100).toFixed(1)}%`
-      : '—';
+    const ws4 = wb.addWorksheet('Análisis');
+    ws4.columns = [{ width: 34 }, { width: 28 }];
 
-    const analRows = [
-      [`ANÁLISIS HHEE ${anio}`],
-      [],
-      ['RESUMEN GENERAL', ''],
-      ['Total horas 50%', totalHs50],
-      ['Total horas 100%', totalHs100],
-      ['Total horas combinadas', totalHs],
-      ['Total $ pagado', Math.round(totales.$total)],
-      [],
-      ['DISTRIBUCIÓN DE HORAS', ''],
-      ['% Operativas', `${pctOpHs}%`],
-      ['% Inventario / Pre-inventario', `${pctInvHs}%`],
-      [],
-      ['DESTACADOS', ''],
-      ['Mes con mayor costo', mesMayorCosto ? `${MESES_FULL[mesMayorCosto.mes - 1]} ($${Math.round(mesMayorCosto.$total).toLocaleString('es-AR')})` : '—'],
-      ['Mes con más participantes en inv.', mesMayorPartic ? `${MESES_FULL[mesMayorPartic.mes - 1]} (${mesMayorPartic.invCount} personas)` : '—'],
-      [],
-      ['VARIACIÓN TARIFARIA', ''],
-      ['Variación anual valor hora 50%', varAnual50],
-      ['Valor hora 50% inicio del año', primerTarifa ? `$${Math.round(primerTarifa.v50).toLocaleString('es-AR')}` : '—'],
-      ['Valor hora 50% último mes con tarifa', ultimaTarifa ? `$${Math.round(ultimaTarifa.v50).toLocaleString('es-AR')}` : '—'],
+    ws4.mergeCells('A1:B1');
+    const t4 = ws4.getCell('A1');
+    t4.value = `ANÁLISIS HHEE ${anio}`;
+    t4.font = titleFont(); t4.fill = fill(C.azulOsc); t4.alignment = aln('center');
+    ws4.getRow(1).height = 28;
+    ws4.addRow([]);
+
+    const totalHs = totales.total50 + totales.total100;
+    const pctOp  = totalHs > 0 ? ((totales.op50  + totales.op100)  / totalHs * 100).toFixed(1) + '%' : '—';
+    const pctInv = totalHs > 0 ? ((totales.inv50 + totales.inv100) / totalHs * 100).toFixed(1) + '%' : '—';
+    const mesesConDatos2 = datos.filter(m => m.$total > 0);
+    const mesMayor = mesesConDatos2.length ? mesesConDatos2.reduce((a,b) => b.$total > a.$total ? b : a) : null;
+    const mesMayorP = datos.filter(m => m.invCount > 0).length ? datos.filter(m => m.invCount > 0).reduce((a,b) => b.invCount > a.invCount ? b : a) : null;
+    const primerT = datos.find(m => m.v50 > 0);
+    const ultimoT = [...datos].reverse().find(m => m.v50 > 0);
+    const varAnual = primerT && ultimoT && primerT !== ultimoT ? `${((ultimoT.v50 - primerT.v50) / primerT.v50 * 100).toFixed(1)}%` : '—';
+
+    const secciones = [
+      { titulo: 'RESUMEN GENERAL', color: C.azulMed, filas: [
+        ['Total horas 50%',      totales.total50],
+        ['Total horas 100%',     totales.total100],
+        ['Total horas combinadas', totalHs],
+        ['Total $ pagado',       Math.round(totales.$total)],
+      ]},
+      { titulo: 'DISTRIBUCIÓN DE HORAS', color: C.azulMed, filas: [
+        ['% Operativas',                  pctOp],
+        ['% Inventario / Pre-inventario', pctInv],
+      ]},
+      { titulo: 'DESTACADOS', color: C.verde, filas: [
+        ['Mes con mayor costo',              mesMayor  ? `${MESES_FULL[mesMayor.mes-1]} ($${Math.round(mesMayor.$total).toLocaleString('es-AR')})` : '—'],
+        ['Mes con más participantes en inv.', mesMayorP ? `${MESES_FULL[mesMayorP.mes-1]} (${mesMayorP.invCount} personas)` : '—'],
+      ]},
+      { titulo: 'VARIACIÓN TARIFARIA', color: C.violeta, filas: [
+        ['Variación anual valor hora 50%',         varAnual],
+        ['Valor hora 50% inicio del año',          primerT ? `$${Math.round(primerT.v50).toLocaleString('es-AR')}` : '—'],
+        ['Valor hora 50% último mes con tarifa',   ultimoT ? `$${Math.round(ultimoT.v50).toLocaleString('es-AR')}` : '—'],
+      ]},
     ];
-    const wsAnal = addSheet('Análisis', analRows);
-    setWidths(wsAnal, [34, 28]);
+
+    secciones.forEach(({ titulo, color, filas }) => {
+      ws4.addRow([]);
+      ws4.mergeCells(`A${ws4.lastRow.number + 1}:B${ws4.lastRow.number + 1}`);
+      const rT = ws4.addRow([titulo, '']);
+      rT.getCell(1).font = headerFont();
+      rT.getCell(1).fill = fill(color);
+      rT.getCell(1).alignment = aln('left');
+      rT.getCell(2).fill = fill(color);
+      rT.height = 20;
+      filas.forEach(([label, val]) => {
+        const r = ws4.addRow([label, val]);
+        r.getCell(1).font = dataFont(); r.getCell(1).fill = fill(C.gris); r.getCell(1).border = borders;
+        r.getCell(2).font = dataFont(true); r.getCell(2).border = borders; r.getCell(2).alignment = aln('right');
+        r.height = 18;
+      });
+    });
 
     // ── descargar ─────────────────────────────────────────────────────────────
-    XLSX.writeFile(wb, `evolucion_hhee_${anio}.xlsx`);
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `evolucion_hhee_${anio}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
   }
 
   function imprimirPDF() { window.print(); }
@@ -274,7 +374,7 @@ export default function ResumenHHEEPage() {
             {ANIOS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           <button onClick={() => setShowForm(true)} style={s.btnHist}>+ Cargar histórico</button>
-          <button onClick={descargarExcel} disabled={loading} style={s.btnExcel}>⬇ Excel</button>
+          <button onClick={() => descargarExcel()} disabled={loading} style={s.btnExcel}>⬇ Excel</button>
           <button onClick={imprimirPDF}    disabled={loading} style={s.btnPdf}>🖨 PDF</button>
         </div>
       </div>
