@@ -363,7 +363,20 @@ export default function ResumenHHEEPage() {
 
   return (
     <div style={s.page} className="page-padding">
-      <style>{`@media print { .no-print { display:none!important; } body { background:#fff; } }`}</style>
+      <style>{`
+        @media print {
+          .no-print { display:none!important; }
+          nav { display:none!important; }
+          body { background:#fff; margin:0; }
+          .page-padding { padding: 12px !important; max-width: 100% !important; }
+          table { page-break-inside: auto; font-size: 11px !important; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          h1, h2 { page-break-after: avoid; }
+          div { page-break-inside: avoid; }
+          @page { size: A4 landscape; margin: 1cm; }
+        }
+      `}</style>
       <div style={s.header}>
         <div>
           <h1 style={s.title}>Evolución HHEE</h1>
